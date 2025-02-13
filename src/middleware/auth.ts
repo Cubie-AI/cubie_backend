@@ -35,6 +35,13 @@ export async function checkAuth(
 
     next();
   } catch (e) {
-    res.status(401).send("Unauthorized");
+    return next(
+      new InternalAuthenticationError("Unknown authentication error")
+    );
   }
+}
+
+export async function makeJwt(address: string, nonce: string) {
+  const token = jwt.sign({ address, nonce }, JWT_SECRET, { expiresIn: "30d" });
+  return token;
 }
