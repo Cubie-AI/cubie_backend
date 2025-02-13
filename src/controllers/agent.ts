@@ -1,12 +1,18 @@
 import { Router } from "express";
-import { getAgentById, getAgents } from "../db/repositories.js";
+import {
+  getAgentById,
+  getAgentByIdAndOwner,
+  getAgents,
+} from "../db/repositories.js";
 import { InternalValidationError } from "../utils/errors.js";
 
 import { Keypair } from "@solana/web3.js";
 import { randomBytes } from "crypto";
 import multer from "multer";
 import { Agent, AgentInfo } from "../db/models.js";
+import { checkAuth } from "../middleware/auth.js";
 import { getCreateAndBuyTransaction } from "../solana/pumpfun.js";
+import { feeListener } from "../solana/transactionListener.js";
 
 const storage = multer.diskStorage({
   destination: function (_req, _file, cb) {
@@ -172,7 +178,25 @@ router.post("/launch", upload.single("image"), async (req, res, next) => {
     userFeeAccount.publicKey
   );
 
+  // For now we assume it is a fixed sol amount to launch an agent
+  feeListener.listen(userFeeAccount.publicKey.toBase58(), agent.id);
   res.status(200).json({ mint: mint.publicKey.toBase58(), transaction });
+});
+
+router.put("/:id", checkAuth, async (req, res, next) => {
+  const id = parseInt(req.params.id, 10);
+  const data = req.body;
+  const agent = await getAgentByIdAndOwner(id, req.address);
+
+  if (!agent) {
+    return next(new InternalValidationError("Agent not found"));
+  }
+
+  await Agent.update(data, {
+    where: { id },
+  });
+
+  res.status(200).json({ status: agent.status });
 });
 
 export default router;

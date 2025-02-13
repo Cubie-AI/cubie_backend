@@ -46,3 +46,15 @@ export async function getAgentById(id: number) {
 
   return agent;
 }
+
+export async function getAgentByIdAndOwner(id: number, owner: string) {
+  const agent = await Agent.findOne({
+    where: {
+      id,
+      owner,
+      status: "active",
+    },
+  });
+
+  return agent;
+}
