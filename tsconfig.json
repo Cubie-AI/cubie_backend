@@ -1,0 +1,10 @@
+{
+  "extends": "@tsconfig/node22/tsconfig.json",
+  "exclude": ["node_modules"],
+  "include": ["src/**/*", "scripts/**/*"],
+  "compilerOptions": {
+    "outDir": "./dist",
+    "resolveJsonModule": true,
+    "esModuleInterop": true
+  }
+}
