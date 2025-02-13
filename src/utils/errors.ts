@@ -13,3 +13,10 @@ export class InternalValidationError extends InternalRequestError {
     this.name = "ValidationError";
   }
 }
+
+export class InternalAuthenticationError extends InternalRequestError {
+  constructor(message: string) {
+    super(message, 401);
+    this.name = "AuthenticationError";
+  }
+}

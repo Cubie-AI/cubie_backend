@@ -7,3 +7,5 @@ export const DATABASE_USER = process.env.DATABASE_USER || "";
 export const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || "";
 
 export const CUBIE_AGENT_FEE = 0.15;
+
+export const JWT_SECRET = process.env.JWT_SECRET || "";
