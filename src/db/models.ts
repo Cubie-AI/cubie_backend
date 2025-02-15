@@ -1,21 +1,18 @@
 import { Agent } from "./models/agent.js";
 import { AgentInfo } from "./models/agentInfo.js";
+import { Nonce } from "./models/nonce.js";
 import { People } from "./models/people.js";
 
-Agent.hasMany(People, {
-  as: "people",
+People.belongsTo(Agent, {
+  foreignKey: "agentId",
 });
 
-People.belongsTo(Agent);
-
-Agent.hasMany(AgentInfo, {
-  as: "agentInfo",
+AgentInfo.belongsTo(Agent, {
+  foreignKey: "agentId",
 });
+await Agent.sync({});
 
-AgentInfo.belongsTo(Agent);
-
-await Agent.sync();
-await People.sync();
-await AgentInfo.sync();
-
+await People.sync({});
+await AgentInfo.sync({});
+await Nonce.sync({});
 export { Agent, AgentInfo, People };

@@ -2,3 +2,6 @@
 
 scripts/db.sql
 node_modules/
+public/images/
+combined.log
+error.log

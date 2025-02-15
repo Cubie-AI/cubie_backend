@@ -1,13 +1,12 @@
 import {
+  AddressLookupTableAccount,
   Keypair,
   LAMPORTS_PER_SOL,
   PublicKey,
   SystemProgram,
-  Transaction,
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
-import fs from "fs";
 import { CUBIE_AGENT_FEE } from "../utils/constants.js";
 import { solanaConnection } from "./connection.js";
 export async function getCreateAndBuyTransaction(
@@ -16,7 +15,8 @@ export async function getCreateAndBuyTransaction(
   name: string,
   ticker: string,
   description: string,
-  filename: string,
+  imageBuffer: Buffer,
+  mime: string,
   x_handle: string,
   telegram: string,
   mint: Keypair,
@@ -25,16 +25,15 @@ export async function getCreateAndBuyTransaction(
 ) {
   // Define token metadata
   const formData = new FormData();
-  formData.append(
-    "file",
-    await fs.openAsBlob(import.meta.dirname + "../../public/images/" + filename)
-  ), // Image file
+  console.log(imageBuffer);
+  console.log(mime);
+  formData.append("file", new Blob([imageBuffer], { type: mime })), // Image file
     formData.append("name", name);
   formData.append("symbol", ticker);
   formData.append("description", description);
 
   if (x_handle) {
-    formData.append("twitter", x_handle);
+    formData.append("twitter", `https://x.com/${x_handle}`);
   }
 
   if (telegram) {
@@ -54,7 +53,9 @@ export async function getCreateAndBuyTransaction(
     metadataUri: string;
   };
 
+  console.log(metadataResponseJSON);
   // Get the create transaction
+  console.log(mint.publicKey.toBase58());
   const response = await fetch(`https://pumpportal.fun/api/trade-local`, {
     method: "POST",
     headers: {
@@ -79,26 +80,35 @@ export async function getCreateAndBuyTransaction(
   if (response.status === 200) {
     // successfully generated transaction
     const data = await response.arrayBuffer();
-    const transactionBase = Transaction.from(new Uint8Array(data));
+    console.log("Transaction data: ", data);
+    const versionedTransaction = VersionedTransaction.deserialize(
+      new Uint8Array(data)
+    );
+    const addressLookupTable = await Promise.all(
+      versionedTransaction.message.addressTableLookups.map(async (lookup) => {
+        return new AddressLookupTableAccount({
+          key: lookup.accountKey,
+          state: AddressLookupTableAccount.deserialize(
+            await solanaConnection
+              .getAccountInfo(lookup.accountKey)
+              .then((res) => res?.data || new Uint8Array())
+          ),
+        });
+      })
+    );
+    const message = TransactionMessage.decompile(versionedTransaction.message, {
+      addressLookupTableAccounts: addressLookupTable,
+    });
 
     const ownerPublicKey = new PublicKey(owner);
-    transactionBase.add(
+    message.instructions.push(
       SystemProgram.transfer({
         fromPubkey: ownerPublicKey,
         toPubkey: feeAccount,
         lamports: CUBIE_AGENT_FEE * LAMPORTS_PER_SOL,
       })
     );
-
-    const blockhash = await solanaConnection.getLatestBlockhash();
-
-    const message = new TransactionMessage({
-      payerKey: ownerPublicKey,
-      recentBlockhash: blockhash.blockhash,
-      instructions: transactionBase.instructions,
-    }).compileToV0Message();
-
-    return new VersionedTransaction(message).serialize();
+    return new VersionedTransaction(message.compileToV0Message());
   } else {
     console.log(response.statusText); // log error
   }

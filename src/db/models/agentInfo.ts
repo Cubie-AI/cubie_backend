@@ -44,6 +44,6 @@ AgentInfo.init(
   },
   {
     sequelize: db,
-    modelName: "agent_info",
+    tableName: "agent_info",
   }
 );

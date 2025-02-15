@@ -8,18 +8,21 @@ import { InternalValidationError } from "../utils/errors.js";
 
 import { Keypair } from "@solana/web3.js";
 import { randomBytes } from "crypto";
+import { readFileSync } from "fs";
 import multer from "multer";
 import { Agent, AgentInfo } from "../db/models.js";
 import { checkAuth } from "../middleware/auth.js";
 import { getCreateAndBuyTransaction } from "../solana/pumpfun.js";
 import { feeListener } from "../solana/transactionListener.js";
+import { logger } from "../utils/logger.js";
 
 const storage = multer.diskStorage({
   destination: function (_req, _file, cb) {
     cb(null, import.meta.dirname + "/../../public/images");
   },
   filename: function (_req, file, cb) {
-    cb(null, randomBytes(16).toString("hex"));
+    const ext = file.originalname.split(".").pop();
+    cb(null, randomBytes(16).toString("hex") + "." + ext);
   },
 });
 
@@ -94,9 +97,13 @@ router.post("/launch", upload.single("image"), async (req, res, next) => {
     devBuy = 0,
   } = req.body;
 
+  logger.info(
+    `Launching agent ${name} with fields: ${ticker}, ${bio}, ${owner}, ${knowledge}, ${people}, ${style}, ${twitterStyle}, ${telegramStyle}, ${devBuy}, ${twitterConfig}, ${telegramConfig}`
+  );
   if (!name || !ticker || !bio) {
     return next(new InternalValidationError("Missing required fields"));
   }
+  let agentBio = `${bio}\nLaunched by $CUBIE (https://cubie.fun)`;
 
   if (!devBuy || isNaN(devBuy)) {
     return next(new InternalValidationError("Invalid dev buy"));
@@ -108,21 +115,44 @@ router.post("/launch", upload.single("image"), async (req, res, next) => {
 
   if (!twitterConfig && !telegramConfig) {
     return next(
-      new InternalValidationError("Missing social media configuration")
+      new InternalValidationError("Enable at least one social media platform")
     );
   }
 
+  let twitterConfigParsed = { username: "", password: "", email: "" };
+  if (twitterConfig) {
+    try {
+      twitterConfigParsed = JSON.parse(twitterConfig);
+    } catch (e) {
+      return next(new InternalValidationError("Invalid Twitter configuration"));
+    }
+  }
   if (
-    twitterConfig &&
-    (!twitterConfig.email || !twitterConfig.password || !twitterConfig.username)
+    twitterConfigParsed &&
+    !twitterConfigParsed.username &&
+    !twitterConfigParsed.password &&
+    !twitterConfigParsed.email
   ) {
-    return next(new InternalValidationError("Missing Twitter credentials"));
+    return next(new InternalValidationError("Invalid Twitter configuration"));
+  }
+  let telegramConfigParsed;
+  if (telegramConfig) {
+    try {
+      telegramConfigParsed = JSON.parse(telegramConfig);
+    } catch (e) {
+      return next(
+        new InternalValidationError("Invalid Telegram configuration")
+      );
+    }
   }
 
-  if (telegramConfig && !telegramConfig.botToken) {
-    return next(new InternalValidationError("Missing Telegram bot token"));
+  if (
+    telegramConfigParsed &&
+    !telegramConfigParsed.username &&
+    !telegramConfigParsed.botToken
+  ) {
+    return next(new InternalValidationError("Invalid Telegram configuration"));
   }
-
   const fileUrl = "/images/" + req.file.filename;
 
   const agentInfo: AgentInfo[] = [];
@@ -145,42 +175,64 @@ router.post("/launch", upload.single("image"), async (req, res, next) => {
   const mint = Keypair.generate();
   const userFeeAccount = Keypair.generate();
 
-  const agent = Agent.build({
+  const agentData = {
     name,
     ticker,
-    bio,
+    bio: agentBio,
     owner,
     mint: mint.publicKey.toBase58(),
     image_url: fileUrl,
     status: "pending",
-    telegram: telegramConfig ? telegramConfig.username : "",
-    agentInfo: agentInfo,
-    tw_password: twitterConfig ? twitterConfig.password : "",
-    tw_email: twitterConfig ? twitterConfig.email : "",
-    tw_handle: twitterConfig ? twitterConfig.username : "",
-    telegram_bot_token: telegramConfig ? telegramConfig.botToken : "",
     feeAccountPublicKey: userFeeAccount.publicKey.toBase58(),
     feeAccountPrivateKey: userFeeAccount.secretKey.toString(),
-  });
+  } as Agent;
 
+  if (twitterConfigParsed) {
+    logger.info(JSON.stringify(twitterConfigParsed));
+    agentData.tw_handle = twitterConfigParsed.username;
+    agentData.tw_email = twitterConfigParsed.email;
+    agentData.tw_password = twitterConfigParsed.password;
+  }
+
+  if (telegramConfigParsed) {
+    logger.info("Setting telegram data: ", telegramConfigParsed);
+    agentData.telegram = telegramConfigParsed.username;
+    agentData.telegram_bot_token = telegramConfigParsed.botToken;
+  }
+
+  logger.info("Creating agent with data: ", agentData);
+  const agent = Agent.build({ ...agentData });
+
+  logger.info("Saving agent");
   await agent.save();
-  const transaction = getCreateAndBuyTransaction(
+  logger.info("Agent saved");
+
+  const fileBuffer = readFileSync(req.file.path);
+  const transaction = await getCreateAndBuyTransaction(
     agent.id,
     owner,
     name,
     ticker,
-    bio,
-    req.file.filename,
-    twitterConfig.username,
-    telegramConfig.username,
+    agentBio,
+    fileBuffer,
+    req.file.mimetype,
+    twitterConfigParsed?.username || "",
+    telegramConfigParsed?.username || "",
     mint,
     devBuy,
     userFeeAccount.publicKey
   );
 
+  if (!transaction) {
+    return next(new InternalValidationError("Failed to create agent"));
+  }
+  transaction?.sign([mint]);
   // For now we assume it is a fixed sol amount to launch an agent
   feeListener.listen(userFeeAccount.publicKey.toBase58(), agent.id);
-  res.status(200).json({ mint: mint.publicKey.toBase58(), transaction });
+  res.status(200).json({
+    mint: mint.publicKey.toBase58(),
+    transaction: Buffer.from(transaction.serialize()).toString("base64"),
+  });
 });
 
 router.put("/:id", checkAuth, async (req, res, next) => {

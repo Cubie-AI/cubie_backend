@@ -56,21 +56,29 @@ Agent.init(
     },
     telegram: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     tw_password: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     tw_email: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     tw_handle: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     telegram_bot_token: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    feeAccountPublicKey: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    feeAccountPrivateKey: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -81,6 +89,6 @@ Agent.init(
   },
   {
     sequelize: db,
-    modelName: "agent",
+    tableName: "agents",
   }
 );
