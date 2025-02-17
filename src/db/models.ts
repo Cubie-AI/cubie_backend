@@ -7,11 +7,14 @@ People.belongsTo(Agent, {
   foreignKey: "agentId",
 });
 
-Agent.hasMany(AgentInfo);
+Agent.hasMany(AgentInfo, {
+  foreignKey: "agentId",
+});
 
 AgentInfo.belongsTo(Agent, {
   foreignKey: "agentId",
 });
+
 await Agent.sync({});
 
 await People.sync({});
