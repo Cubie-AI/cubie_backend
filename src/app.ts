@@ -4,6 +4,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import agentRouter from "./controllers/agent.js";
 import authRouter from "./controllers/auth.js";
+import commentRouter from "./controllers/comment.js";
 import { InternalRequestError } from "./utils/errors.js";
 
 const app = express();
@@ -16,6 +17,7 @@ app.use(express.static(import.meta.dirname + "/../public"));
 
 app.use("/api/auth", authRouter);
 app.use("/api/agent", agentRouter);
+app.use("/api/comment", commentRouter);
 
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   let status = 500;
@@ -36,7 +38,7 @@ io.on("connection", (socket) => {
 });
 
 server.listen(8080, () => {
-  console.log(`Server running on port ${process.env.PORT}`);
+  console.log(`Server running on port 8080`);
 });
 
 // Uncomment this block to test the socket connection
@@ -45,4 +47,4 @@ server.listen(8080, () => {
 //   const ids = [1, 66];
 //   const agentId = ids[Math.floor(Math.random() * ids.length)];
 //   notifyAgentCreation(agentId);
-// }, 5000);
+// }, 2000);

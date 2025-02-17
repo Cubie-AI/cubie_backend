@@ -1,6 +1,7 @@
 import { DataTypes, Model } from "sequelize";
 import { db } from "../connection.js";
 import { AgentInfo } from "./agentInfo.js";
+import { Comment } from "./comment.js";
 import { People } from "./people.js";
 
 export class Agent extends Model {
@@ -20,7 +21,8 @@ export class Agent extends Model {
   declare feeAccountPrivateKey: string;
   declare status: "active" | "pending";
   declare people: People[];
-  declare agentInfo: AgentInfo[];
+  declare info: AgentInfo[];
+  declare comments: Comment[];
 }
 
 Agent.init(

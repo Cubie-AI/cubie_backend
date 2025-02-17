@@ -1,9 +1,10 @@
+import { Comment } from "../db/models.js";
 import { getAgentById } from "../db/repositories.js";
-import { HistoricPrice } from "../solana/birdeye.js";
+import { getHistoricalPrices, HistoricPrice } from "../solana/birdeye.js";
 import { getBucketedData } from "../solana/dexscreener.js";
 import { getTokenMarketData } from "../solana/token.js";
 
-export async function getAgentResponse(id: number) {
+export async function getAgentResponse(id: number, expanded = false) {
   const agent = await getAgentById(id);
 
   if (!agent) {
@@ -11,9 +12,8 @@ export async function getAgentResponse(id: number) {
   }
 
   const marketData = await getTokenMarketData(agent.mint);
-  const volume = await getBucketedData([agent.mint]);
 
-  return {
+  const response = {
     id: agent.id,
     name: agent.name,
     mint: agent.mint,
@@ -23,11 +23,17 @@ export async function getAgentResponse(id: number) {
     bio: agent.bio,
     twitter: agent.tw_handle,
     telegram: agent.telegram,
+    volume: {},
     history: [] as HistoricPrice[],
+    comments: [] as Comment[],
     ...(marketData[agent.mint] || {}),
-    volume: volume[agent.mint],
-    knowledge: (agent.agentInfo || [])
-      .filter((data) => data.type === "knowledge")
-      .map((data) => data.data),
   };
+
+  if (expanded) {
+    response.history = await getHistoricalPrices(agent.mint);
+    response.comments = agent.comments.map((comment) => comment.toJSON());
+    response.volume = (await getBucketedData([agent.mint]))[agent.mint];
+  }
+
+  return response;
 }

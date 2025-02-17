@@ -12,10 +12,15 @@ export async function checkAuth(
   logger.info("Checking auth");
   const header = req.headers.authorization;
   if (!header) {
-    return next(new InternalAuthenticationError("No token provided"));
+    return next(
+      new InternalAuthenticationError("Missing authorization header")
+    );
   }
   try {
     const token = header.split(" ")[1];
+    if (!token || token.length === 0) {
+      return next(new InternalAuthenticationError("Please sign in"));
+    }
     logger.info(`Token is ${token}`);
     const decoded = jwt.verify(token, JWT_SECRET) as {
       address: string;

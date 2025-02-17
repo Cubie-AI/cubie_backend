@@ -2,14 +2,15 @@ import { DataTypes, Model } from "sequelize";
 import { db } from "../connection.js";
 import { Agent } from "./agent.js";
 
-export class AgentInfo extends Model {
+export class Comment extends Model {
   declare id: number;
   declare agentId: number;
-  declare type: "knowledge" | "style" | "twitter_style" | "telegram_style";
-  declare data: string;
+  declare address: string;
+  declare content: string;
+  declare replyTo: number | null;
 }
 
-AgentInfo.init(
+Comment.init(
   {
     id: {
       type: DataTypes.BIGINT,
@@ -24,17 +25,21 @@ AgentInfo.init(
         key: "id",
       },
     },
-    type: {
+    address: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    data: {
+    content: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    replyTo: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
     },
   },
   {
     sequelize: db,
-    tableName: "agent_info",
+    tableName: "comments",
   }
 );

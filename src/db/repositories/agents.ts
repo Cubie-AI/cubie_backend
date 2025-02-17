@@ -1,41 +1,25 @@
-import { Op } from "sequelize";
 import { Agent, AgentInfo } from "../models.js";
+import { Comment } from "../models/comment.js";
 
-export async function getAgents(filter?: string, order?: string) {
-  let orderParam;
-  if (!order || order === "marketCap") {
-    orderParam = ["createdAt"];
-  } else if (order === "created") {
-    orderParam = ["createdAt"];
-  }
+const ASSOCIATIONS = [
+  {
+    model: AgentInfo,
+    as: "info",
+  },
+  {
+    model: Comment,
+    as: "comments",
+  },
+];
 
-  let agents = [];
-  if (filter) {
-    agents = await Agent.findAll({
-      where: {
-        [Op.or]: {
-          name: {
-            [Op.like]: `%${filter}%`,
-          },
-          mint: {
-            [Op.like]: `%${filter}%`,
-          },
-        },
-        status: "active",
-      },
-      order: orderParam,
-      include: [AgentInfo],
-    });
-  } else {
-    agents = await Agent.findAll({
-      where: {
-        status: "active",
-      },
-      order: orderParam,
-      include: [AgentInfo],
-    });
-  }
-  return agents;
+export async function getAgents() {
+  return await Agent.findAll({
+    where: {
+      status: "active",
+    },
+    order: ["createdAt"],
+    include: ASSOCIATIONS,
+  });
 }
 
 export async function getAgentById(id: number) {
@@ -44,9 +28,10 @@ export async function getAgentById(id: number) {
       id,
       status: "active",
     },
-    include: [AgentInfo],
+    include: ASSOCIATIONS,
   });
 
+  console.log(agent?.toJSON());
   return agent;
 }
 
@@ -57,7 +42,7 @@ export async function getAgentByIdAndOwner(id: number, owner: string) {
       owner,
       status: "active",
     },
-    include: [AgentInfo],
+    include: [ASSOCIATIONS[0]],
   });
 
   return agent;

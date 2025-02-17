@@ -7,7 +7,6 @@ import multer from "multer";
 import { Agent, AgentInfo } from "../db/models.js";
 import { getAgentResponse } from "../helpers/agent.js";
 import { checkAuth } from "../middleware/auth.js";
-import { getHistoricalPrices } from "../solana/birdeye.js";
 import { getBucketedData } from "../solana/dexscreener.js";
 import {
   createTokenMetadata,
@@ -62,12 +61,10 @@ router.get("/:id", async (req, res, next) => {
     return next(new InternalValidationError("Invalid agent ID"));
   }
 
-  const response = await getAgentResponse(id);
+  const response = await getAgentResponse(id, true);
   if (!response) {
     return next(new InternalValidationError("Agent not found"));
   }
-
-  response.history = await getHistoricalPrices(response.mint);
 
   res.status(200).json(response);
 });

@@ -2,7 +2,7 @@ import { PublicKey } from "@solana/web3.js";
 import bs58 from "bs58";
 import { NextFunction, Request, Response, Router } from "express";
 import nacl from "tweetnacl";
-import { Nonce } from "../db/models/nonce.js";
+import { Nonce } from "../db/models.js";
 import { makeJwt } from "../middleware/auth.js";
 import {
   InternalAuthenticationError,
