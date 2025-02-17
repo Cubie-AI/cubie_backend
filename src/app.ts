@@ -4,7 +4,6 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import agentRouter from "./controllers/agent.js";
 import authRouter from "./controllers/auth.js";
-import { notifyAgentCreation } from "./helpers/socket.js";
 import { InternalRequestError } from "./utils/errors.js";
 
 const app = express();
@@ -40,9 +39,10 @@ server.listen(8080, () => {
   console.log(`Server running on port ${process.env.PORT}`);
 });
 
-setInterval(() => {
-  const rand = Math.random();
-  const ids = [1, 66];
-  const agentId = ids[Math.floor(Math.random() * ids.length)];
-  notifyAgentCreation(agentId);
-}, 5000);
+// Uncomment this block to test the socket connection
+// setInterval(() => {
+//   const rand = Math.random();
+//   const ids = [1, 66];
+//   const agentId = ids[Math.floor(Math.random() * ids.length)];
+//   notifyAgentCreation(agentId);
+// }, 5000);
