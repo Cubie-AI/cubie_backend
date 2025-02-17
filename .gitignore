@@ -1,6 +1,7 @@
 .env
 
 scripts/db.sql
+scripts/backup.sql
 node_modules/
 public/images/
 combined.log
