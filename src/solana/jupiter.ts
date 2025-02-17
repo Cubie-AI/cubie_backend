@@ -36,3 +36,89 @@ export async function getSolanaUsdPrice() {
     console.log(error);
   }
 }
+
+interface JupiterQuote {
+  inputMint: string;
+  outputMint: string;
+  amount: number;
+  slippageBps: number;
+}
+
+interface JupiterQuoteResponse {
+  inputMint: string;
+  inAmount: string;
+  outputMint: string;
+  outAmount: string;
+  otherAmountThreshold: string;
+  swapMode: string;
+  slippageBps: number;
+  platformFee: number | null;
+  priceImpactPct: string;
+  routePlan: {
+    swapInfo: {
+      ammKey: string;
+      label: string;
+      inputMint: string;
+      outputMint: string;
+      inAmount: string;
+      outAmount: string;
+      feeAmount: string;
+      feeMint: string;
+    };
+    percent: number;
+  }[];
+  contextSlot: number;
+  timeTaken: number;
+}
+
+export async function getQuote(params: JupiterQuote) {
+  const urlParams = new URLSearchParams({
+    inputMint: params.inputMint,
+    outputMint: params.outputMint,
+    amount: params.amount.toString(),
+    slippageBps: params.slippageBps.toString(),
+  });
+  const quoteResponse = await (
+    await fetch("https://api.jup.ag/swap/v1/quote?" + urlParams.toString())
+  ).json();
+  return quoteResponse as JupiterQuoteResponse;
+}
+
+interface JupiterSwapTransaction {
+  quote: JupiterQuoteResponse;
+  userPublicKey: string;
+}
+
+interface JupiterSwapResponse {
+  error: string;
+  swapTransaction: string;
+}
+export async function getSwapTransaction(params: JupiterSwapTransaction) {
+  const swapResponse = await (
+    await fetch("https://api.jup.ag/swap/v1/swap", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        // 'x-api-key': '' // enter api key here
+      },
+      body: JSON.stringify({
+        quoteResponse: params.quote,
+        userPublicKey: params.userPublicKey,
+
+        // ADDITIONAL PARAMETERS TO OPTIMIZE FOR TRANSACTION LANDING
+        // See next guide to optimize for transaction landing
+        dynamicComputeUnitLimit: true,
+        dynamicSlippage: true,
+        prioritizationFeeLamports: {
+          priorityLevelWithMaxLamports: {
+            maxLamports: 1000000,
+            priorityLevel: "veryHigh",
+          },
+        },
+      }),
+    })
+  ).json();
+
+  console.log(swapResponse);
+  return swapResponse as JupiterSwapResponse;
+}

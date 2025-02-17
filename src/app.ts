@@ -5,6 +5,7 @@ import { Server } from "socket.io";
 import agentRouter from "./controllers/agent.js";
 import authRouter from "./controllers/auth.js";
 import commentRouter from "./controllers/comment.js";
+import tradeRouter from "./controllers/trade.js";
 import { InternalRequestError } from "./utils/errors.js";
 
 const app = express();
@@ -18,6 +19,7 @@ app.use(express.static(import.meta.dirname + "/../public"));
 app.use("/api/auth", authRouter);
 app.use("/api/agent", agentRouter);
 app.use("/api/comment", commentRouter);
+app.use("/api/trade", tradeRouter);
 
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   let status = 500;
