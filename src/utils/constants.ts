@@ -20,3 +20,5 @@ export const CUBIE_FEE_ACCOUNT = new PublicKey(
 
 export const MAIAR_RUNNER_SERVICE =
   process.env.MAIAR_RUNNER_SERVICE || "http://localhost:8081";
+
+export const DISABLE_LAUNCH = process.env.DISABLE_LAUNCH === "true";

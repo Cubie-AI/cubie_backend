@@ -17,6 +17,7 @@ import {
 } from "../solana/pumpfun.js";
 import { getTokenMarketData } from "../solana/token.js";
 import { feeListener } from "../solana/transactionListener.js";
+import { DISABLE_LAUNCH } from "../utils/constants.js";
 import { logger } from "../utils/logger.js";
 import { launchSchema } from "../validators/launch.js";
 
@@ -97,6 +98,13 @@ router.post(
   checkAuth,
   upload.single("image"),
   async (req, res, next) => {
+    if (DISABLE_LAUNCH) {
+      return next(
+        new InternalValidationError(
+          "Launchpad is going live Feb 17 @ 3:30PM PST/6:30PM EST"
+        )
+      );
+    }
     const owner = req.address;
 
     console.dir(req.body, { depth: 3 });
