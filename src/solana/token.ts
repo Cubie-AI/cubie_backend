@@ -3,6 +3,9 @@ import { logger } from "../utils/logger.js";
 import { solanaConnection } from "./connection.js";
 import { getPrice, getSolanaUsdPrice } from "./jupiter.js";
 
+function calculateMarketCap(price: number, supply: number, solUsd: number) {
+  return Number((price * supply * solUsd).toFixed(2));
+}
 export async function getTokenMarketData(mint: string | string[]) {
   let result: Record<string, { price: number; marketCapValue: number }> = {};
 
@@ -16,8 +19,11 @@ export async function getTokenMarketData(mint: string | string[]) {
         );
         result[mint[i]] = {
           price: prices[mint[i]].price,
-          marketCapValue:
-            prices[mint[i]].price * (supply?.value?.uiAmount || 0) * solUsd,
+          marketCapValue: calculateMarketCap(
+            prices[mint[i]].price,
+            supply?.value?.uiAmount || 0,
+            solUsd
+          ),
         };
       } else {
         result[mint[i]] = { price: 0, marketCapValue: 0 };
@@ -27,8 +33,11 @@ export async function getTokenMarketData(mint: string | string[]) {
     const supply = await solanaConnection.getTokenSupply(new PublicKey(mint));
     result[mint] = {
       price: prices[mint].price,
-      marketCapValue:
-        prices[mint].price * (supply?.value?.uiAmount || 0) * solUsd,
+      marketCapValue: calculateMarketCap(
+        prices[mint].price,
+        supply?.value?.uiAmount || 0,
+        solUsd
+      ),
     };
   }
 
