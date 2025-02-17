@@ -7,6 +7,8 @@ People.belongsTo(Agent, {
   foreignKey: "agentId",
 });
 
+Agent.hasMany(AgentInfo);
+
 AgentInfo.belongsTo(Agent, {
   foreignKey: "agentId",
 });

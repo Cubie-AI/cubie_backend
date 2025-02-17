@@ -1,8 +1,10 @@
-import { Connection, PublicKey } from "@solana/web3.js";
+import { Connection, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
+import { Op } from "sequelize";
 import { Agent } from "../db/models.js";
-import { CUBIE_AGENT_FEE } from "../utils/constants.js";
+import { CUBIE_AGENT_FEE, MAIAR_RUNNER_SERVICE } from "../utils/constants.js";
 import { logger } from "../utils/logger.js";
 import { solanaConnection } from "./connection.js";
+import { startFeeTransfer } from "./transferSubscriber.js";
 
 class FeeAccountSubscription {
   subscriptionId: number;
@@ -52,8 +54,26 @@ class FeeAccountListener {
         new PublicKey(feeAccount),
         async (account) => {
           const newBalance = account.lamports;
-          if (newBalance > CUBIE_AGENT_FEE) {
+          if (newBalance >= (CUBIE_AGENT_FEE - 0.01) * LAMPORTS_PER_SOL) {
             Agent.update({ status: "active" }, { where: { id: agentId } });
+
+            // start to transfer the fees from the listener to the main account
+            startFeeTransfer(agentId);
+
+            // ping the runner service to start the agent
+            const callBackend = await fetch(MAIAR_RUNNER_SERVICE, {
+              method: "POST",
+              body: JSON.stringify({
+                agentId,
+              }),
+            });
+            if (callBackend.status === 200) {
+              logger.info(`Agent ${agentId} is now active`);
+            } else {
+              logger.error(
+                `Failed to activate agent ${agentId} with status ${callBackend.status}`
+              );
+            }
           }
         },
         {
@@ -75,5 +95,9 @@ class FeeAccountListener {
 }
 export const feeListener = new FeeAccountListener(
   solanaConnection,
-  await Agent.findAll()
+  await Agent.findAll({
+    where: {
+      createdAt: { [Op.gt]: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+    },
+  })
 );

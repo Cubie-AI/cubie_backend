@@ -1,12 +1,12 @@
 import { Op } from "sequelize";
-import { Agent } from "../models.js";
+import { Agent, AgentInfo } from "../models.js";
 
-export async function getAgents(filter: string, order: string) {
+export async function getAgents(filter?: string, order?: string) {
   let orderParam;
   if (!order || order === "marketCap") {
-    orderParam = ["marketCap", "DESC"];
+    orderParam = ["createdAt"];
   } else if (order === "created") {
-    orderParam = ["createdAt", "DESC"];
+    orderParam = ["createdAt"];
   }
 
   let agents = [];
@@ -24,6 +24,7 @@ export async function getAgents(filter: string, order: string) {
         status: "active",
       },
       order: orderParam,
+      include: [AgentInfo],
     });
   } else {
     agents = await Agent.findAll({
@@ -31,6 +32,7 @@ export async function getAgents(filter: string, order: string) {
         status: "active",
       },
       order: orderParam,
+      include: [AgentInfo],
     });
   }
   return agents;
@@ -42,6 +44,7 @@ export async function getAgentById(id: number) {
       id,
       status: "active",
     },
+    include: [AgentInfo],
   });
 
   return agent;
@@ -54,6 +57,7 @@ export async function getAgentByIdAndOwner(id: number, owner: string) {
       owner,
       status: "active",
     },
+    include: [AgentInfo],
   });
 
   return agent;

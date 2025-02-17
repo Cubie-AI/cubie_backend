@@ -53,7 +53,8 @@ router.post(
       return next(new InternalAuthenticationError("Invalid signature"));
     }
     logger.info(`Address ${address} signed nonce ${nonce}`);
-    res.status(200).json({ token: makeJwt(address, nonce) });
+    const token = await makeJwt(address, nonce);
+    res.status(200).json({ token });
   }
 );
 

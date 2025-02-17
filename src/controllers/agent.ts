@@ -7,24 +7,20 @@ import {
 import { InternalValidationError } from "../utils/errors.js";
 
 import { Keypair } from "@solana/web3.js";
-import { randomBytes } from "crypto";
-import { readFileSync } from "fs";
 import multer from "multer";
 import { Agent, AgentInfo } from "../db/models.js";
 import { checkAuth } from "../middleware/auth.js";
-import { getCreateAndBuyTransaction } from "../solana/pumpfun.js";
+import { getBucketedData } from "../solana/dexscreener.js";
+import {
+  createTokenMetadata,
+  getCreateAndBuyTransaction,
+} from "../solana/pumpfun.js";
+import { getTokenMarketData } from "../solana/token.js";
 import { feeListener } from "../solana/transactionListener.js";
 import { logger } from "../utils/logger.js";
+import { launchSchema } from "../validators/launch.js";
 
-const storage = multer.diskStorage({
-  destination: function (_req, _file, cb) {
-    cb(null, import.meta.dirname + "/../../public/images");
-  },
-  filename: function (_req, file, cb) {
-    const ext = file.originalname.split(".").pop();
-    cb(null, randomBytes(16).toString("hex") + "." + ext);
-  },
-});
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage: storage,
@@ -33,22 +29,28 @@ const upload = multer({
 const router = Router();
 
 router.get("/", async (req, res, next) => {
-  const { order = "", filter = "" } = req.query;
+  const { order = "", filter = "" } = req.query || {};
 
   if (typeof order !== "string" || typeof filter !== "string") {
     return next(new InternalValidationError("Invalid query parameters"));
   }
-  const agents = await getAgents(filter, order);
+  const agents = await getAgents();
 
+  const mints = agents.map((agent) => agent.mint);
+  const marketData = await getTokenMarketData(mints);
+  const volume = await getBucketedData(mints);
   const response = agents.map((agent) => ({
     id: agent.id,
     name: agent.name,
     mint: agent.mint,
     owner: agent.owner,
-    imageUrl: agent.image_url,
+    photo: agent.image_url,
     bio: agent.bio,
     twitter: agent.tw_handle,
     telegram: agent.telegram,
+    ticker: agent.ticker,
+    ...(marketData[agent.mint] || {}),
+    volume: volume[agent.mint],
   }));
 
   res.status(200).json(response);
@@ -67,173 +69,139 @@ router.get("/:id", async (req, res, next) => {
     return next(new InternalValidationError("Agent not found"));
   }
 
+  const marketData = await getTokenMarketData(agent.mint);
+  const volume = await getBucketedData([agent.mint]);
+
   const response = {
     id: agent.id,
     name: agent.name,
     mint: agent.mint,
+    ticker: agent.ticker,
     owner: agent.owner,
     imageUrl: agent.image_url,
     bio: agent.bio,
     twitter: agent.tw_handle,
     telegram: agent.telegram,
+    ...(marketData[agent.mint] || {}),
+    volume: volume[agent.mint],
+    knowledge: (agent.agentInfo || [])
+      .filter((data) => data.type === "knowledge")
+      .map((data) => data.data),
   };
 
   res.status(200).json(response);
 });
 
-router.post("/launch", upload.single("image"), async (req, res, next) => {
-  const {
-    name,
-    ticker,
-    bio,
-    twitterConfig,
-    telegramConfig,
-    owner,
-    knowledge = [],
-    people = [],
-    style = [],
-    twitterStyle = [],
-    telegramStyle = [],
-    devBuy = 0,
-  } = req.body;
+router.post(
+  "/launch",
+  checkAuth,
+  upload.single("image"),
+  async (req, res, next) => {
+    const owner = req.address;
 
-  logger.info(
-    `Launching agent ${name} with fields: ${ticker}, ${bio}, ${owner}, ${knowledge}, ${people}, ${style}, ${twitterStyle}, ${telegramStyle}, ${devBuy}, ${twitterConfig}, ${telegramConfig}`
-  );
-  if (!name || !ticker || !bio) {
-    return next(new InternalValidationError("Missing required fields"));
-  }
-  let agentBio = `${bio}\nLaunched by $CUBIE (https://cubie.fun)`;
-
-  if (!devBuy || isNaN(devBuy)) {
-    return next(new InternalValidationError("Invalid dev buy"));
-  }
-
-  if (!req.file) {
-    return next(new InternalValidationError("Image is required"));
-  }
-
-  if (!twitterConfig && !telegramConfig) {
-    return next(
-      new InternalValidationError("Enable at least one social media platform")
-    );
-  }
-
-  let twitterConfigParsed = { username: "", password: "", email: "" };
-  if (twitterConfig) {
-    try {
-      twitterConfigParsed = JSON.parse(twitterConfig);
-    } catch (e) {
-      return next(new InternalValidationError("Invalid Twitter configuration"));
+    console.dir(req.body, { depth: 3 });
+    if (!owner) {
+      return next(new InternalValidationError("Sign in to launch an agent"));
     }
-  }
-  if (
-    twitterConfigParsed &&
-    !twitterConfigParsed.username &&
-    !twitterConfigParsed.password &&
-    !twitterConfigParsed.email
-  ) {
-    return next(new InternalValidationError("Invalid Twitter configuration"));
-  }
-  let telegramConfigParsed;
-  if (telegramConfig) {
-    try {
-      telegramConfigParsed = JSON.parse(telegramConfig);
-    } catch (e) {
+    const { success, data, error } = await launchSchema.safeParseAsync(
+      req.body
+    );
+    if (!success) {
+      const messages = error?.errors.map((error) => error.message).join(", ");
+      return next(new InternalValidationError(messages));
+    }
+
+    logger.info(`Launching agent with data: ${JSON.stringify(data)}`);
+    const {
+      name,
+      ticker,
+      bio,
+      twitterConfig,
+      telegramConfig,
+      knowledge,
+      style,
+      twitterStyle,
+      telegramStyle,
+      devBuy,
+    } = data;
+
+    let agentBio = `${bio}\nLaunched on $CUBIE (https://cubie.fun)`;
+    if (!req.file || !req.file.buffer || !req.file.mimetype) {
+      return next(new InternalValidationError("Image is required"));
+    }
+
+    if (!twitterConfig && !telegramConfig) {
       return next(
-        new InternalValidationError("Invalid Telegram configuration")
+        new InternalValidationError("Enable at least one social media platform")
       );
     }
+    const agentInfo: AgentInfo[] = [];
+
+    knowledge.forEach((data: string) => {
+      agentInfo.push(AgentInfo.build({ type: "knowledge", data }));
+    });
+    style.forEach((data: string) => {
+      agentInfo.push(AgentInfo.build({ type: "style", data }));
+    });
+    twitterStyle.forEach((data: string) => {
+      agentInfo.push(AgentInfo.build({ type: "twitter_style", data }));
+    });
+    telegramStyle.forEach((data: string) => {
+      agentInfo.push(AgentInfo.build({ type: "telegram_style", data }));
+    });
+
+    const mint = Keypair.generate();
+    const userFeeAccount = Keypair.generate();
+
+    const agentData = {
+      name,
+      ticker,
+      bio: agentBio,
+      owner,
+      mint: mint.publicKey.toBase58(),
+      status: "pending",
+      feeAccountPublicKey: userFeeAccount.publicKey.toBase58(),
+      feeAccountPrivateKey: userFeeAccount.secretKey.toString(),
+    } as Agent;
+
+    const tokenMetadata = await createTokenMetadata(
+      name,
+      ticker,
+      bio,
+      req.file.buffer,
+      req.file.mimetype,
+      twitterConfig?.username,
+      telegramConfig?.username
+    );
+
+    agentData.image_url = tokenMetadata.uri;
+    logger.info("Creating agent with data: ", agentData);
+    const agent = Agent.build({ ...agentData });
+
+    logger.info("Saving agent");
+    await agent.save();
+    logger.info("Agent saved");
+
+    const transaction = await getCreateAndBuyTransaction(
+      owner,
+      tokenMetadata,
+      mint,
+      devBuy,
+      userFeeAccount.publicKey
+    );
+
+    if (!transaction) {
+      return next(new InternalValidationError("Failed to create agent"));
+    }
+    transaction?.sign([mint]);
+    // For now we assume it is a fixed sol amount to launch an agent
+    feeListener.listen(userFeeAccount.publicKey.toBase58(), agent.id);
+    res.status(200).json({
+      mint: mint.publicKey.toBase58(),
+      transaction: Buffer.from(transaction.serialize()).toString("base64"),
+    });
   }
-
-  if (
-    telegramConfigParsed &&
-    !telegramConfigParsed.username &&
-    !telegramConfigParsed.botToken
-  ) {
-    return next(new InternalValidationError("Invalid Telegram configuration"));
-  }
-  const fileUrl = "/images/" + req.file.filename;
-
-  const agentInfo: AgentInfo[] = [];
-  people.forEach((data: string) => {
-    agentInfo.push(AgentInfo.build({ type: "people", data }));
-  });
-  knowledge.forEach((data: string) => {
-    agentInfo.push(AgentInfo.build({ type: "knowledge", data }));
-  });
-  style.forEach((data: string) => {
-    agentInfo.push(AgentInfo.build({ type: "style", data }));
-  });
-  twitterStyle.forEach((data: string) => {
-    agentInfo.push(AgentInfo.build({ type: "twitter_style", data }));
-  });
-  telegramStyle.forEach((data: string) => {
-    agentInfo.push(AgentInfo.build({ type: "telegram_style", data }));
-  });
-
-  const mint = Keypair.generate();
-  const userFeeAccount = Keypair.generate();
-
-  const agentData = {
-    name,
-    ticker,
-    bio: agentBio,
-    owner,
-    mint: mint.publicKey.toBase58(),
-    image_url: fileUrl,
-    status: "pending",
-    feeAccountPublicKey: userFeeAccount.publicKey.toBase58(),
-    feeAccountPrivateKey: userFeeAccount.secretKey.toString(),
-  } as Agent;
-
-  if (twitterConfigParsed) {
-    logger.info(JSON.stringify(twitterConfigParsed));
-    agentData.tw_handle = twitterConfigParsed.username;
-    agentData.tw_email = twitterConfigParsed.email;
-    agentData.tw_password = twitterConfigParsed.password;
-  }
-
-  if (telegramConfigParsed) {
-    logger.info("Setting telegram data: ", telegramConfigParsed);
-    agentData.telegram = telegramConfigParsed.username;
-    agentData.telegram_bot_token = telegramConfigParsed.botToken;
-  }
-
-  logger.info("Creating agent with data: ", agentData);
-  const agent = Agent.build({ ...agentData });
-
-  logger.info("Saving agent");
-  await agent.save();
-  logger.info("Agent saved");
-
-  const fileBuffer = readFileSync(req.file.path);
-  const transaction = await getCreateAndBuyTransaction(
-    agent.id,
-    owner,
-    name,
-    ticker,
-    agentBio,
-    fileBuffer,
-    req.file.mimetype,
-    twitterConfigParsed?.username || "",
-    telegramConfigParsed?.username || "",
-    mint,
-    devBuy,
-    userFeeAccount.publicKey
-  );
-
-  if (!transaction) {
-    return next(new InternalValidationError("Failed to create agent"));
-  }
-  transaction?.sign([mint]);
-  // For now we assume it is a fixed sol amount to launch an agent
-  feeListener.listen(userFeeAccount.publicKey.toBase58(), agent.id);
-  res.status(200).json({
-    mint: mint.publicKey.toBase58(),
-    transaction: Buffer.from(transaction.serialize()).toString("base64"),
-  });
-});
+);
 
 router.put("/:id", checkAuth, async (req, res, next) => {
   const id = parseInt(req.params.id, 10);
