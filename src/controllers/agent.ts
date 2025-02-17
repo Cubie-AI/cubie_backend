@@ -1,15 +1,13 @@
 import { Router } from "express";
-import {
-  getAgentById,
-  getAgentByIdAndOwner,
-  getAgents,
-} from "../db/repositories.js";
+import { getAgentByIdAndOwner, getAgents } from "../db/repositories.js";
 import { InternalValidationError } from "../utils/errors.js";
 
 import { Keypair } from "@solana/web3.js";
 import multer from "multer";
 import { Agent, AgentInfo } from "../db/models.js";
+import { getAgentResponse } from "../helpers/agent.js";
 import { checkAuth } from "../middleware/auth.js";
+import { getHistoricalPrices } from "../solana/birdeye.js";
 import { getBucketedData } from "../solana/dexscreener.js";
 import {
   createTokenMetadata,
@@ -64,31 +62,12 @@ router.get("/:id", async (req, res, next) => {
     return next(new InternalValidationError("Invalid agent ID"));
   }
 
-  const agent = await getAgentById(id);
-
-  if (!agent) {
+  const response = await getAgentResponse(id);
+  if (!response) {
     return next(new InternalValidationError("Agent not found"));
   }
 
-  const marketData = await getTokenMarketData(agent.mint);
-  const volume = await getBucketedData([agent.mint]);
-
-  const response = {
-    id: agent.id,
-    name: agent.name,
-    mint: agent.mint,
-    ticker: agent.ticker,
-    owner: agent.owner,
-    imageUrl: agent.image_url,
-    bio: agent.bio,
-    twitter: agent.tw_handle,
-    telegram: agent.telegram,
-    ...(marketData[agent.mint] || {}),
-    volume: volume[agent.mint],
-    knowledge: (agent.agentInfo || [])
-      .filter((data) => data.type === "knowledge")
-      .map((data) => data.data),
-  };
+  response.history = await getHistoricalPrices(response.mint);
 
   res.status(200).json(response);
 });

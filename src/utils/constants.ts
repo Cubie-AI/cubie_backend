@@ -22,3 +22,5 @@ export const MAIAR_RUNNER_SERVICE =
   process.env.MAIAR_RUNNER_SERVICE || "http://localhost:8081";
 
 export const DISABLE_LAUNCH = process.env.DISABLE_LAUNCH === "true";
+
+export const BIRDEYE_API_KEY = process.env.BIRDEYE_API_KEY || "";

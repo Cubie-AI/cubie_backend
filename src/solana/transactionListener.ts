@@ -1,7 +1,8 @@
 import { Connection, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { Op } from "sequelize";
 import { Agent } from "../db/models.js";
-import { CUBIE_AGENT_FEE, MAIAR_RUNNER_SERVICE } from "../utils/constants.js";
+import { startAgentRunner } from "../helpers/maiarRunner.js";
+import { CUBIE_AGENT_FEE } from "../utils/constants.js";
 import { logger } from "../utils/logger.js";
 import { solanaConnection } from "./connection.js";
 import { startFeeTransfer } from "./transferSubscriber.js";
@@ -59,21 +60,7 @@ class FeeAccountListener {
 
             // start to transfer the fees from the listener to the main account
             startFeeTransfer(agentId);
-
-            // ping the runner service to start the agent
-            const callBackend = await fetch(MAIAR_RUNNER_SERVICE, {
-              method: "POST",
-              body: JSON.stringify({
-                agentId,
-              }),
-            });
-            if (callBackend.status === 200) {
-              logger.info(`Agent ${agentId} is now active`);
-            } else {
-              logger.error(
-                `Failed to activate agent ${agentId} with status ${callBackend.status}`
-              );
-            }
+            startAgentRunner(agentId);
           }
         },
         {
