@@ -7,7 +7,7 @@ export const DATABASE_PORT = process.env.DATABASE_PORT || "";
 export const DATABASE_USER = process.env.DATABASE_USER || "";
 
 export const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || "";
-
+export const SOLANA_WSS_URL = process.env.SOLANA_WSS_URL || "";
 export const CUBIE_AGENT_FEE = 0.02;
 
 export const JWT_SECRET = process.env.JWT_SECRET || "";
