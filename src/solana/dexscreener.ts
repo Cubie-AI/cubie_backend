@@ -47,7 +47,7 @@ export async function getBucketedData(mint: string[] | string) {
   );
   const data = (await response.json()) as TimedMarkedData[];
 
-  logger.info(`Bucketed data for ${mint} is ${JSON.stringify(data)}`);
+  logger.info(`Retrieved dexscreener data for ${mint}`);
 
   const result: Record<string, TimedMarkedData> = Array.isArray(mint)
     ? data.reduce(
