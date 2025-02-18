@@ -3,6 +3,7 @@ import { getAgentByIdAndOwner, getAgents } from "../db/repositories.js";
 import { InternalValidationError } from "../utils/errors.js";
 
 import { Keypair } from "@solana/web3.js";
+import bs58 from "bs58";
 import multer from "multer";
 import { Agent, AgentInfo } from "../db/models.js";
 import { getAgentResponse } from "../helpers/agent.js";
@@ -17,7 +18,6 @@ import { pollFeeAccount } from "../solana/transactionListener.js";
 import { DISABLE_LAUNCH } from "../utils/constants.js";
 import { logger } from "../utils/logger.js";
 import { launchSchema } from "../validators/launch.js";
-
 const storage = multer.memoryStorage();
 
 const upload = multer({
@@ -199,6 +199,9 @@ router.post(
       return next(new InternalValidationError("Failed to create agent"));
     }
     transaction?.sign([mint]);
+
+    console.log("sig", bs58.encode(transaction.signatures[0]));
+
     res.status(200).json({
       id: agent.id,
       mint: mint.publicKey.toBase58(),
