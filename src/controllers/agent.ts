@@ -13,7 +13,7 @@ import {
   getCreateAndBuyTransaction,
 } from "../solana/pumpfun.js";
 import { getTokenMarketData } from "../solana/token.js";
-import { feeListener } from "../solana/transactionListener.js";
+import { pollFeeAccount } from "../solana/transactionListener.js";
 import { DISABLE_LAUNCH } from "../utils/constants.js";
 import { logger } from "../utils/logger.js";
 import { launchSchema } from "../validators/launch.js";
@@ -154,7 +154,7 @@ router.post(
     const userFeeAccount = Keypair.generate();
 
     // For now we assume it is a fixed sol amount to launch an agent
-    feeListener.listen(userFeeAccount.publicKey.toBase58());
+    pollFeeAccount(userFeeAccount.publicKey);
 
     const agentData = {
       name,

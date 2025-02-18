@@ -1,12 +1,7 @@
-import { Connection, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
-import { Op } from "sequelize";
-import { Agent } from "../db/models.js";
-import { startAgentRunner } from "../helpers/maiarRunner.js";
-import { notifyAgentCreation } from "../helpers/socket.js";
+import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { CUBIE_AGENT_FEE } from "../utils/constants.js";
 import { logger } from "../utils/logger.js";
 import { solanaConnection } from "./connection.js";
-import { startFeeTransfer } from "./transferSubscriber.js";
 
 class FeeAccountSubscription {
   subscriptionId: number;
@@ -17,101 +12,21 @@ class FeeAccountSubscription {
   }
 }
 
-async function feeAccountHandler(feeAccount: PublicKey, agentId: number) {
-  logger.info(
-    `Checking balance for fee account: ${feeAccount.toBase58()} and agentId: ${agentId}`
-  );
+export async function pollFeeAccount(feeAccount: PublicKey) {
+  logger.info("Polling fee account");
+  const recievedDeposit = async () => {
+    const account = await solanaConnection.getParsedAccountInfo(feeAccount);
+    return account.value?.lamports;
+  };
+  let balance = (await recievedDeposit()) || 0;
 
-  await new Promise((resolve) => setTimeout(resolve, 4000));
-  const account = await solanaConnection.getParsedAccountInfo(feeAccount);
-
-  console.dir(account, { depth: null });
-  const balance = account.value?.lamports;
-
-  logger.info(
-    `Balance for fee account: ${feeAccount.toBase58()} is ${balance}`
-  );
-  const target = (CUBIE_AGENT_FEE - 0.01) * LAMPORTS_PER_SOL;
-  logger.info(
-    `Balance for fee account: ${feeAccount.toBase58()} is ${balance} with target: ${target}`
-  );
-  if (balance && balance >= target) {
-    Agent.update({ status: "active" }, { where: { id: agentId } });
-    notifyAgentCreation(agentId);
-    startFeeTransfer(agentId);
-    startAgentRunner(agentId);
+  if (balance >= (CUBIE_AGENT_FEE - 0.03) * LAMPORTS_PER_SOL) {
+    logger.info(`Fee account ${feeAccount.toBase58()} has enough balance`);
+    // Agent.update({ status: "active" }, { where: { id: agentId } });
+    // notifyAgentCreation(agentId);
+    // startFeeTransfer(agentId);
+    // startAgentRunner(agentId);
+  } else {
+    setTimeout(pollFeeAccount, 5000, feeAccount);
   }
 }
-
-const BATCH_SIZE = 10;
-class FeeAccountListener {
-  connection: Connection;
-  agentListeners: Record<string, FeeAccountSubscription> = {};
-  constructor(connection: Connection, agents: Agent[]) {
-    this.connection = connection;
-
-    const pendingAgents = agents.filter((agent) => agent.status === "pending");
-    logger.info(`Starting wallet listener for ${agents.length} wallets`);
-
-    let delay = 0;
-    for (let i = 0; i < pendingAgents.length; i += BATCH_SIZE) {
-      const batchEnd = Math.min(i + BATCH_SIZE, agents.length);
-      const batch = pendingAgents.slice(i, batchEnd);
-      setTimeout(
-        () => batch.forEach((agent) => this.listen(agent.feeAccountPublicKey)),
-        delay
-      );
-      delay += 1000;
-    }
-  }
-
-  listen(feeAccount: string) {
-    logger.info(
-      `Attempting to start wallet listener on address: ${feeAccount}`
-    );
-    const feeAccountPublicKey = new PublicKey(feeAccount);
-
-    if (this.agentListeners[feeAccount]) {
-      logger.info(`Already listening to wallet: ${feeAccount}`);
-    } else {
-      const subscriptionId = solanaConnection.onAccountChange(
-        feeAccountPublicKey,
-        async (account) => {
-          console.dir(account, { depth: null });
-
-          // const agent = await Agent.findOne({
-          //   where: { feeAccountPublicKey: feeAccount },
-          // });
-          // if (!agent) {
-          //   logger.error(`Agent not found for fee account: ${feeAccount}`);
-          //   return;
-          // }
-          // console.dir(agent, { depth: null });
-          // logger.info("Account changed: ", JSON.stringify(account, null, 2));
-          // await feeAccountHandler(feeAccountPublicKey, agent?.id);
-          // this.connection.removeAccountChangeListener(subscriptionId);
-        },
-        {
-          commitment: "finalized",
-        }
-      );
-
-      this.agentListeners[feeAccount] = new FeeAccountSubscription(
-        subscriptionId,
-        feeAccount
-      );
-
-      logger.info(
-        `Listening to wallet: ${feeAccount} with subscription ID: ${subscriptionId}`
-      );
-    }
-  }
-}
-export const feeListener = new FeeAccountListener(
-  solanaConnection,
-  await Agent.findAll({
-    where: {
-      createdAt: { [Op.gt]: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-    },
-  })
-);
