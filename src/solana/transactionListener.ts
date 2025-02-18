@@ -76,10 +76,8 @@ class FeeAccountListener {
         new PublicKey(feeAccount),
         async (account) => {
           logger.info("Account changed: ", JSON.stringify(account, null, 2));
-          if (account.lamports >= CUBIE_AGENT_FEE * LAMPORTS_PER_SOL) {
-            await feeAccountHandler(feeAccountPublicKey, agentId);
-            this.connection.removeAccountChangeListener(subscriptionId);
-          }
+          await feeAccountHandler(feeAccountPublicKey, agentId);
+          this.connection.removeAccountChangeListener(subscriptionId);
         },
         {
           commitment: "confirmed",
