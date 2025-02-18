@@ -95,7 +95,9 @@ router.post(
       return next(new InternalValidationError(messages));
     }
 
-    logger.info(`Launching agent with data: ${JSON.stringify(data)}`);
+    logger.info(
+      `Creating agent for owner ${owner} with name ${data.name} and ticker ${data.ticker}`
+    );
     const {
       name,
       ticker,
@@ -158,7 +160,7 @@ router.post(
       telegramConfig?.username
     );
 
-    agentData.image_url = tokenMetadata.uri;
+    agentData.image_url = tokenMetadata.imageUri;
     logger.info("Creating agent with data: ", agentData);
     const agent = Agent.build({ ...agentData });
 

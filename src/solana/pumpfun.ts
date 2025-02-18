@@ -17,6 +17,7 @@ interface TokenMetadata {
   symbol: string;
   uri: string;
 }
+
 export async function createTokenMetadata(
   name: string,
   ticker: string,
@@ -30,8 +31,8 @@ export async function createTokenMetadata(
   const formData = new FormData();
   console.log(imageBuffer);
   console.log(mime);
-  formData.append("file", new Blob([imageBuffer], { type: mime })), // Image file
-    formData.append("name", name);
+  formData.append("file", new Blob([imageBuffer], { type: mime })); // Image file
+  formData.append("name", name);
   formData.append("symbol", ticker);
   formData.append("description", description);
 
@@ -52,13 +53,14 @@ export async function createTokenMetadata(
     body: formData,
   });
   const metadataResponseJSON = (await metadataResponse.json()) as {
-    metadata: { name: string; symbol: string };
+    metadata: { name: string; symbol: string; image: string };
     metadataUri: string;
   };
   console.log(metadataResponseJSON);
   return {
     name: metadataResponseJSON.metadata.name,
     symbol: metadataResponseJSON.metadata.symbol,
+    imageUri: metadataResponseJSON.metadata.image,
     uri: metadataResponseJSON.metadataUri,
   };
 }
