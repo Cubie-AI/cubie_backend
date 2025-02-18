@@ -2,6 +2,7 @@ import { Connection, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { Op } from "sequelize";
 import { Agent } from "../db/models.js";
 import { startAgentRunner } from "../helpers/maiarRunner.js";
+import { notifyAgentCreation } from "../helpers/socket.js";
 import { CUBIE_AGENT_FEE } from "../utils/constants.js";
 import { logger } from "../utils/logger.js";
 import { solanaConnection } from "./connection.js";
@@ -55,8 +56,16 @@ class FeeAccountListener {
         new PublicKey(feeAccount),
         async (account) => {
           const newBalance = account.lamports;
+          logger.info(
+            `New balance for ${feeAccount}: ${newBalance}, ${
+              newBalance >= (CUBIE_AGENT_FEE - 0.01) * LAMPORTS_PER_SOL
+            }, ${CUBIE_AGENT_FEE}`
+          );
           if (newBalance >= (CUBIE_AGENT_FEE - 0.01) * LAMPORTS_PER_SOL) {
             Agent.update({ status: "active" }, { where: { id: agentId } });
+
+            // websocket notification to connected clients
+            notifyAgentCreation(agentId);
 
             // start to transfer the fees from the listener to the main account
             startFeeTransfer(agentId);
