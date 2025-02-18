@@ -62,12 +62,12 @@ class FeeAccountListener {
     }
   }
 
-  async listen(feeAccount: string, agentId: number) {
+  listen(feeAccount: string, agentId: number) {
     logger.info(
       `Attempting to start wallet listener on address: ${feeAccount}`
     );
     const feeAccountPublicKey = new PublicKey(feeAccount);
-    await feeAccountHandler(feeAccountPublicKey, agentId);
+    feeAccountHandler(feeAccountPublicKey, agentId);
 
     if (this.agentListeners[feeAccount]) {
       logger.info(`Already listening to wallet: ${feeAccount}`);
@@ -80,7 +80,7 @@ class FeeAccountListener {
           this.connection.removeAccountChangeListener(subscriptionId);
         },
         {
-          commitment: "confirmed",
+          commitment: "finalized",
           encoding: "jsonParsed",
         }
       );
