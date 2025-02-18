@@ -19,7 +19,11 @@ class FeeAccountSubscription {
 export async function pollFeeAccount(feeAccount: PublicKey) {
   logger.info(`Polling fee account ${feeAccount.toBase58()}`);
   const recievedDeposit = async () => {
-    const account = await solanaConnection.getParsedAccountInfo(feeAccount);
+    // like a small potential fork risk here
+    const account = await solanaConnection.getParsedAccountInfo(
+      feeAccount,
+      "finalized"
+    );
     return account.value?.lamports;
   };
 
