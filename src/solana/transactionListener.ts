@@ -17,15 +17,18 @@ class FeeAccountSubscription {
 }
 
 export async function pollFeeAccount(feeAccount: PublicKey) {
-  logger.info("Polling fee account");
+  logger.info(`Polling fee account ${feeAccount.toBase58()}`);
   const recievedDeposit = async () => {
     const account = await solanaConnection.getParsedAccountInfo(feeAccount);
     return account.value?.lamports;
   };
-  let balance = (await recievedDeposit()) || 0;
 
+  // Check if the fee account has enough balance to cover the agent fee
+  let balance = (await recievedDeposit()) || 0;
   if (balance >= (CUBIE_AGENT_FEE - 0.03) * LAMPORTS_PER_SOL) {
     logger.info(`Fee account ${feeAccount.toBase58()} has enough balance`);
+
+    // Get the agent if it is still pending
     const agentInfo = await Agent.findOne({
       where: { feeAccount: feeAccount.toBase58(), status: "pending" },
     });
