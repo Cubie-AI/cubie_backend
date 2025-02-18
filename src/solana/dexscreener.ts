@@ -5,7 +5,7 @@ interface BuySellCount {
   sells: number;
 }
 type TimedKeys = "m5" | "h1" | "h6" | "h24";
-interface TimedMarkedData {
+export interface TimedMarkedData {
   baseToken: {
     address: string;
   };

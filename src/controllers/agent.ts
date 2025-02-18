@@ -7,7 +7,7 @@ import multer from "multer";
 import { Agent, AgentInfo } from "../db/models.js";
 import { getAgentResponse } from "../helpers/agent.js";
 import { checkAuth } from "../middleware/auth.js";
-import { getBucketedData } from "../solana/dexscreener.js";
+import { getBucketedData, TimedMarkedData } from "../solana/dexscreener.js";
 import {
   createTokenMetadata,
   getCreateAndBuyTransaction,
@@ -26,6 +26,18 @@ const upload = multer({
 
 const router = Router();
 
+interface AgentData {
+  id: number;
+  name: string;
+  ticker: string;
+  mint: string;
+  owner: string;
+  photo: string;
+  bio: string;
+  twitter: string;
+  telegram: string;
+  volume?: TimedMarkedData;
+}
 router.get("/", async (req, res, next) => {
   const { order = "", filter = "" } = req.query || {};
 
@@ -33,9 +45,9 @@ router.get("/", async (req, res, next) => {
     return next(new InternalValidationError("Invalid query parameters"));
   }
   const agents = await getAgents();
-
-  let response: Agent[] = [];
-  if (agents && agents.length) {
+  if (!agents || !agents.length) {
+    res.status(200).json([]);
+  } else {
     const mints = agents.map((agent) => agent.mint);
     const marketData = await getTokenMarketData(mints);
     const volume = await getBucketedData(mints);
@@ -52,9 +64,8 @@ router.get("/", async (req, res, next) => {
       ...(marketData[agent.mint] || {}),
       volume: volume[agent.mint],
     }));
+    res.status(200).json(response);
   }
-
-  res.status(200).json(response);
 });
 
 router.get("/:id", async (req, res, next) => {
