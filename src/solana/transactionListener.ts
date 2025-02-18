@@ -77,17 +77,19 @@ class FeeAccountListener {
       const subscriptionId = solanaConnection.onAccountChange(
         feeAccountPublicKey,
         async (account) => {
-          const agent = await Agent.findOne({
-            where: { feeAccountPublicKey: feeAccount },
-          });
-          if (!agent) {
-            logger.error(`Agent not found for fee account: ${feeAccount}`);
-            return;
-          }
-          console.dir(agent, { depth: null });
-          logger.info("Account changed: ", JSON.stringify(account, null, 2));
-          await feeAccountHandler(feeAccountPublicKey, agent?.id);
-          this.connection.removeAccountChangeListener(subscriptionId);
+          console.dir(account, { depth: null });
+
+          // const agent = await Agent.findOne({
+          //   where: { feeAccountPublicKey: feeAccount },
+          // });
+          // if (!agent) {
+          //   logger.error(`Agent not found for fee account: ${feeAccount}`);
+          //   return;
+          // }
+          // console.dir(agent, { depth: null });
+          // logger.info("Account changed: ", JSON.stringify(account, null, 2));
+          // await feeAccountHandler(feeAccountPublicKey, agent?.id);
+          // this.connection.removeAccountChangeListener(subscriptionId);
         },
         {
           commitment: "finalized",
