@@ -31,7 +31,6 @@ export async function getAgentById(id: number) {
     include: ASSOCIATIONS,
   });
 
-  console.log(agent?.toJSON());
   return agent;
 }
 
