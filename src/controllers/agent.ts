@@ -34,22 +34,25 @@ router.get("/", async (req, res, next) => {
   }
   const agents = await getAgents();
 
-  const mints = agents.map((agent) => agent.mint);
-  const marketData = await getTokenMarketData(mints);
-  const volume = await getBucketedData(mints);
-  const response = agents.map((agent) => ({
-    id: agent.id,
-    name: agent.name,
-    mint: agent.mint,
-    owner: agent.owner,
-    photo: agent.image_url,
-    bio: agent.bio,
-    twitter: agent.tw_handle,
-    telegram: agent.telegram,
-    ticker: agent.ticker,
-    ...(marketData[agent.mint] || {}),
-    volume: volume[agent.mint],
-  }));
+  let response: Agent[] = [];
+  if (agents && agents.length) {
+    const mints = agents.map((agent) => agent.mint);
+    const marketData = await getTokenMarketData(mints);
+    const volume = await getBucketedData(mints);
+    const response = agents.map((agent) => ({
+      id: agent.id,
+      name: agent.name,
+      mint: agent.mint,
+      owner: agent.owner,
+      photo: agent.image_url,
+      bio: agent.bio,
+      twitter: agent.tw_handle,
+      telegram: agent.telegram,
+      ticker: agent.ticker,
+      ...(marketData[agent.mint] || {}),
+      volume: volume[agent.mint],
+    }));
+  }
 
   res.status(200).json(response);
 });
