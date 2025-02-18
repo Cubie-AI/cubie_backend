@@ -1,3 +1,4 @@
+import fetch from "node-fetch";
 import { MAIAR_RUNNER_SERVICE } from "../utils/constants.js";
 import { logger } from "../utils/logger.js";
 
