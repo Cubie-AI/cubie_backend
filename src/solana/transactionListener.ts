@@ -23,6 +23,8 @@ async function feeAccountHandler(feeAccount: PublicKey, agentId: number) {
   logger.info(
     `Checking balance for fee account: ${feeAccount.toBase58()} and agentId: ${agentId}`
   );
+
+  await new Promise((resolve) => setTimeout(resolve, 4000));
   const account = await solanaConnection.getParsedAccountInfo(feeAccount);
 
   console.dir(account, { depth: null });
