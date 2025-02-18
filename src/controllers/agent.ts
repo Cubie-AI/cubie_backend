@@ -153,6 +153,9 @@ router.post(
     const mint = Keypair.generate();
     const userFeeAccount = Keypair.generate();
 
+    // For now we assume it is a fixed sol amount to launch an agent
+    feeListener.listen(userFeeAccount.publicKey.toBase58());
+
     const agentData = {
       name,
       ticker,
@@ -182,9 +185,6 @@ router.post(
 
     logger.info("Saving agent");
     await agent.save();
-
-    // For now we assume it is a fixed sol amount to launch an agent
-    feeListener.listen(userFeeAccount.publicKey.toBase58(), agent.id);
     logger.info("Agent saved");
 
     const transaction = await getCreateAndBuyTransaction(

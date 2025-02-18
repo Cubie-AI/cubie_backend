@@ -11,11 +11,9 @@ import { startFeeTransfer } from "./transferSubscriber.js";
 class FeeAccountSubscription {
   subscriptionId: number;
   feeAccount: string;
-  agentId: number;
-  constructor(subscriptionId: number, feeAccount: string, agentId: number) {
+  constructor(subscriptionId: number, feeAccount: string) {
     this.subscriptionId = subscriptionId;
     this.feeAccount = feeAccount;
-    this.agentId = agentId;
   }
 }
 
@@ -60,31 +58,35 @@ class FeeAccountListener {
       const batchEnd = Math.min(i + BATCH_SIZE, agents.length);
       const batch = pendingAgents.slice(i, batchEnd);
       setTimeout(
-        () =>
-          batch.forEach((agent) =>
-            this.listen(agent.feeAccountPublicKey, agent.id)
-          ),
+        () => batch.forEach((agent) => this.listen(agent.feeAccountPublicKey)),
         delay
       );
       delay += 1000;
     }
   }
 
-  listen(feeAccount: string, agentId: number) {
+  listen(feeAccount: string) {
     logger.info(
       `Attempting to start wallet listener on address: ${feeAccount}`
     );
     const feeAccountPublicKey = new PublicKey(feeAccount);
-    feeAccountHandler(feeAccountPublicKey, agentId);
 
     if (this.agentListeners[feeAccount]) {
       logger.info(`Already listening to wallet: ${feeAccount}`);
     } else {
-      const subscriptionId = this.connection.onAccountChange(
-        new PublicKey(feeAccount),
+      const subscriptionId = solanaConnection.onAccountChange(
+        feeAccountPublicKey,
         async (account) => {
+          const agent = await Agent.findOne({
+            where: { feeAccountPublicKey: feeAccount },
+          });
+          if (!agent) {
+            logger.error(`Agent not found for fee account: ${feeAccount}`);
+            return;
+          }
+          console.dir(agent, { depth: null });
           logger.info("Account changed: ", JSON.stringify(account, null, 2));
-          await feeAccountHandler(feeAccountPublicKey, agentId);
+          await feeAccountHandler(feeAccountPublicKey, agent?.id);
           this.connection.removeAccountChangeListener(subscriptionId);
         },
         {
@@ -95,9 +97,9 @@ class FeeAccountListener {
 
       this.agentListeners[feeAccount] = new FeeAccountSubscription(
         subscriptionId,
-        feeAccount,
-        agentId
+        feeAccount
       );
+
       logger.info(
         `Listening to wallet: ${feeAccount} with subscription ID: ${subscriptionId}`
       );
