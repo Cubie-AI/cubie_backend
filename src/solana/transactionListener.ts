@@ -34,7 +34,7 @@ async function feeAccountHandler(feeAccount: PublicKey, agentId: number) {
   logger.info(
     `Balance for fee account: ${feeAccount.toBase58()} is ${balance} with target: ${target}`
   );
-  if (balance >= target) {
+  if (balance && balance >= target) {
     Agent.update({ status: "active" }, { where: { id: agentId } });
     notifyAgentCreation(agentId);
     startFeeTransfer(agentId);
