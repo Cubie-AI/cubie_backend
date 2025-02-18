@@ -25,6 +25,7 @@ async function feeAccountHandler(feeAccount: PublicKey, agentId: number) {
   );
   const account = await solanaConnection.getParsedAccountInfo(feeAccount);
 
+  console.dir(account, { depth: null });
   const balance = account.value?.lamports;
 
   logger.info(
