@@ -25,6 +25,9 @@ async function feeAccountHandler(feeAccount: PublicKey, agentId: number) {
   );
   const balance = await solanaConnection.getBalance(feeAccount);
 
+  logger.info(
+    `Balance for fee account: ${feeAccount.toBase58()} is ${balance}`
+  );
   const target = (CUBIE_AGENT_FEE - 0.01) * LAMPORTS_PER_SOL;
   logger.info(
     `Balance for fee account: ${feeAccount.toBase58()} is ${balance} with target: ${target}`
