@@ -180,6 +180,9 @@ router.post(
 
     logger.info("Saving agent");
     await agent.save();
+
+    // For now we assume it is a fixed sol amount to launch an agent
+    feeListener.listen(userFeeAccount.publicKey.toBase58(), agent.id);
     logger.info("Agent saved");
 
     const transaction = await getCreateAndBuyTransaction(
@@ -194,8 +197,6 @@ router.post(
       return next(new InternalValidationError("Failed to create agent"));
     }
     transaction?.sign([mint]);
-    // For now we assume it is a fixed sol amount to launch an agent
-    feeListener.listen(userFeeAccount.publicKey.toBase58(), agent.id);
     res.status(200).json({
       id: agent.id,
       mint: mint.publicKey.toBase58(),
