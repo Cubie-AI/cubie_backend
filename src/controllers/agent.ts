@@ -183,6 +183,7 @@ router.post(
     // For now we assume it is a fixed sol amount to launch an agent
     feeListener.listen(userFeeAccount.publicKey.toBase58(), agent.id);
     res.status(200).json({
+      id: agent.id,
       mint: mint.publicKey.toBase58(),
       transaction: Buffer.from(transaction.serialize()).toString("base64"),
     });
