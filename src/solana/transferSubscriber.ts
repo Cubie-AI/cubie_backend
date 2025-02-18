@@ -7,7 +7,6 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
-import bs58 from "bs58";
 import { Agent } from "../db/models.js";
 import { CUBIE_FEE_ACCOUNT } from "../utils/constants.js";
 import { logger } from "../utils/logger.js";
@@ -85,9 +84,13 @@ export async function startFeeTransfer(agentId: number) {
     return;
   }
   const feeAccount = Keypair.fromSecretKey(
-    bs58.decode(agent.feeAccountPrivateKey)
+    Buffer.from(agent.feeAccountPrivateKey, "base64")
   );
-  const balance = await solanaConnection.getBalance(feeAccount.publicKey);
+  const accout = await solanaConnection.getParsedAccountInfo(
+    feeAccount.publicKey
+  );
+  const balance = accout.value?.lamports || 0;
+
   if (balance < 0.01 * LAMPORTS_PER_SOL) {
     logger.error(
       `Insufficient balance for fee account: ${feeAccount.publicKey.toBase58()}`

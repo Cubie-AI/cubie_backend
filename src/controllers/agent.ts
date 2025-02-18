@@ -161,7 +161,9 @@ router.post(
       mint: mint.publicKey.toBase58(),
       status: "pending",
       feeAccountPublicKey: userFeeAccount.publicKey.toBase58(),
-      feeAccountPrivateKey: userFeeAccount.secretKey.toString(),
+      feeAccountPrivateKey: Buffer.from(userFeeAccount.secretKey).toString(
+        "base64"
+      ),
     } as Agent;
 
     const tokenMetadata = await createTokenMetadata(
