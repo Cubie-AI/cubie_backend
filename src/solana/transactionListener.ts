@@ -19,6 +19,16 @@ class FeeAccountSubscription {
   }
 }
 
+async function feeAccountHandler(feeAccount: PublicKey, agentId: number) {
+  const balance = await solanaConnection.getBalance(feeAccount);
+  const target = (CUBIE_AGENT_FEE - 0.01) * LAMPORTS_PER_SOL;
+  if (balance >= target) {
+    Agent.update({ status: "active" }, { where: { id: agentId } });
+    notifyAgentCreation(agentId);
+    startFeeTransfer(agentId);
+    startAgentRunner(agentId);
+  }
+}
 const BATCH_SIZE = 10;
 class FeeAccountListener {
   connection: Connection;
@@ -44,10 +54,12 @@ class FeeAccountListener {
     }
   }
 
-  listen(feeAccount: string, agentId: number) {
+  async listen(feeAccount: string, agentId: number) {
     logger.info(
       `Attempting to start wallet listener on address: ${feeAccount}`
     );
+    const feeAccountPublicKey = new PublicKey(feeAccount);
+    feeAccountHandler(feeAccountPublicKey, agentId);
 
     if (this.agentListeners[feeAccount]) {
       logger.info(`Already listening to wallet: ${feeAccount}`);
@@ -55,21 +67,10 @@ class FeeAccountListener {
       const subscriptionId = this.connection.onAccountChange(
         new PublicKey(feeAccount),
         async (account) => {
-          const newBalance = account.lamports;
-          logger.info(
-            `New balance for ${feeAccount}: ${newBalance}, ${
-              newBalance >= (CUBIE_AGENT_FEE - 0.01) * LAMPORTS_PER_SOL
-            }, ${CUBIE_AGENT_FEE}`
-          );
-          if (newBalance >= (CUBIE_AGENT_FEE - 0.01) * LAMPORTS_PER_SOL) {
-            Agent.update({ status: "active" }, { where: { id: agentId } });
-
-            // websocket notification to connected clients
-            notifyAgentCreation(agentId);
-
-            // start to transfer the fees from the listener to the main account
-            startFeeTransfer(agentId);
-            startAgentRunner(agentId);
+          logger.info("Account changed: ", JSON.stringify(account, null, 2));
+          if (account.lamports >= CUBIE_AGENT_FEE * LAMPORTS_PER_SOL) {
+            await feeAccountHandler(feeAccountPublicKey, agentId);
+            this.connection.removeAccountChangeListener(subscriptionId);
           }
         },
         {
