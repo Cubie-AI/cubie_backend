@@ -34,7 +34,7 @@ export async function pollFeeAccount(feeAccount: PublicKey) {
 
     // Get the agent if it is still pending
     const agentInfo = await Agent.findOne({
-      where: { feeAccount: feeAccount.toBase58(), status: "pending" },
+      where: { feeAccountPublicKey: feeAccount.toBase58(), status: "pending" },
     });
     if (!agentInfo) {
       logger.error(
