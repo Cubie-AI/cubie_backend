@@ -200,7 +200,7 @@ router.post(
     }
     transaction?.sign([mint]);
 
-    console.log("sig", bs58.encode(transaction.signatures[0]));
+    console.log("sig", bs58.encode(transaction.signatures[1]));
 
     res.status(200).json({
       id: agent.id,
