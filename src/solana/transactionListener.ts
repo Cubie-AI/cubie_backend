@@ -93,7 +93,6 @@ class FeeAccountListener {
         },
         {
           commitment: "finalized",
-          encoding: "jsonParsed",
         }
       );
 
