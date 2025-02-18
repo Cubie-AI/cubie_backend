@@ -36,6 +36,7 @@ async function feeAccountHandler(feeAccount: PublicKey, agentId: number) {
     startAgentRunner(agentId);
   }
 }
+
 const BATCH_SIZE = 10;
 class FeeAccountListener {
   connection: Connection;
