@@ -20,6 +20,9 @@ class FeeAccountSubscription {
 }
 
 async function feeAccountHandler(feeAccount: PublicKey, agentId: number) {
+  logger.info(
+    `Checking balance for fee account: ${feeAccount.toBase58()} and agentId: ${agentId}`
+  );
   const balance = await solanaConnection.getBalance(feeAccount);
   const target = (CUBIE_AGENT_FEE - 0.01) * LAMPORTS_PER_SOL;
   if (balance >= target) {
@@ -59,7 +62,7 @@ class FeeAccountListener {
       `Attempting to start wallet listener on address: ${feeAccount}`
     );
     const feeAccountPublicKey = new PublicKey(feeAccount);
-    feeAccountHandler(feeAccountPublicKey, agentId);
+    await feeAccountHandler(feeAccountPublicKey, agentId);
 
     if (this.agentListeners[feeAccount]) {
       logger.info(`Already listening to wallet: ${feeAccount}`);
