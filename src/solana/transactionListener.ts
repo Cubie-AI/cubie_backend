@@ -1,7 +1,11 @@
 import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
+import { Agent } from "../db/models.js";
+import { startAgentRunner } from "../helpers/maiarRunner.js";
+import { notifyAgentCreation } from "../helpers/socket.js";
 import { CUBIE_AGENT_FEE } from "../utils/constants.js";
 import { logger } from "../utils/logger.js";
 import { solanaConnection } from "./connection.js";
+import { startFeeTransfer } from "./transferSubscriber.js";
 
 class FeeAccountSubscription {
   subscriptionId: number;
@@ -22,11 +26,21 @@ export async function pollFeeAccount(feeAccount: PublicKey) {
 
   if (balance >= (CUBIE_AGENT_FEE - 0.03) * LAMPORTS_PER_SOL) {
     logger.info(`Fee account ${feeAccount.toBase58()} has enough balance`);
-    // Agent.update({ status: "active" }, { where: { id: agentId } });
-    // notifyAgentCreation(agentId);
-    // startFeeTransfer(agentId);
-    // startAgentRunner(agentId);
+    const agentInfo = await Agent.findOne({
+      where: { feeAccount: feeAccount.toBase58(), status: "pending" },
+    });
+    if (!agentInfo) {
+      logger.error(
+        `Agent with fee account ${feeAccount.toBase58()} not found in DB`
+      );
+      return;
+    }
+    const agentId = agentInfo.id;
+    Agent.update({ status: "active" }, { where: { id: agentId } });
+    notifyAgentCreation(agentId);
+    startFeeTransfer(agentId);
+    startAgentRunner(agentId);
   } else {
-    setTimeout(pollFeeAccount, 5000, feeAccount);
+    setTimeout(pollFeeAccount, 1000, feeAccount);
   }
 }
