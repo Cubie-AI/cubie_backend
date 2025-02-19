@@ -166,7 +166,6 @@ function computeTokenPrice(
   const postBalances = parsedTranstion?.meta?.postBalances;
   const fee = parsedTranstion?.meta?.fee || 0;
 
-  logger.info(`Fee  ${fee}`);
   if (
     !preTokenBalances ||
     !postTokenBalances ||
@@ -233,8 +232,6 @@ function computeTokenPrice(
           ).microLamports;
         }
       });
-
-      console.dir(microLamports);
       const computeUsage = parsedTranstion.meta?.computeUnitsConsumed || 0;
       priorityFee = Math.floor((computeUsage * Number(microLamports)) / 1e6);
     }
