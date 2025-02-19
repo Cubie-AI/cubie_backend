@@ -17,7 +17,7 @@ class FeeAccountSubscription {
 }
 
 export async function pollFeeAccount(feeAccount: PublicKey, agentFee: number) {
-  logger.info(`Polling fee account ${feeAccount.toBase58()}`);
+  logger.info(`Polling fee account ${feeAccount.toBase58()} for target balance: ${agentFee}`);
   const recievedDeposit = async () => {
     // like a small potential fork risk here
     const account = await solanaConnection.getParsedAccountInfo(feeAccount, {
@@ -26,9 +26,10 @@ export async function pollFeeAccount(feeAccount: PublicKey, agentFee: number) {
     return account.value?.lamports;
   };
 
-  // Check if the fee account has enough balance to cover the agent fee
+  // Subtract some margin to cover transfer fees etc
   let balance = (await recievedDeposit()) || 0;
-  if (balance >= (agentFee - 0.01) * LAMPORTS_PER_SOL) {
+  logger.info(`Fee account ${feeAccount.toBase58()} has balance: ${balance}`);
+  if (balance >= agentFee - (0.01 * LAMPORTS_PER_SOL)) {
     logger.info(`Fee account ${feeAccount.toBase58()} has enough balance`);
 
     // Get the agent if it is still pending

@@ -192,7 +192,7 @@ router.post(
     const tokenMetadata = await createTokenMetadata(
       name,
       ticker,
-      bio,
+      agentBio,
       req.file.buffer,
       req.file.mimetype,
       twitterConfig?.username,

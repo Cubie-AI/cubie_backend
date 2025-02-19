@@ -4,14 +4,14 @@ import { Keypair, LAMPORTS_PER_SOL, PublicKey, VersionedTransaction } from "@sol
 import { Agent } from "../db/models.js";
 import { getQuote, getSwapTransaction, JupiterQuoteResponse } from "../solana/jupiter.js";
 import { burn, getAssociatedTokenAddressSync, NATIVE_MINT } from "@solana/spl-token";
-import { CUBIE_DAO_PRIVATE_KEY, CUBIE_MINT } from "../utils/constants.js";
+import { CUBIE_AGENT_FEE, CUBIE_DAO_PRIVATE_KEY, CUBIE_MINT } from "../utils/constants.js";
 import { logger } from "../utils/logger.js";
 import { solanaConnection } from "../solana/connection.js";
 
-
+// Return the agent fee as lamports
 export async function getAgentFee(){
   const count = await Agent.count();
-  return 0.1 * Math.pow(1.005, count);
+  return Math.floor((CUBIE_AGENT_FEE * Math.pow(1.005, count)) * LAMPORTS_PER_SOL);
 }
 
 function normalizeAmount(amount: number, decimals = 9) {

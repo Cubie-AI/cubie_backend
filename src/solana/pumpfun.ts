@@ -121,7 +121,7 @@ export async function getCreateAndBuyTransaction(
       SystemProgram.transfer({
         fromPubkey: ownerPublicKey,
         toPubkey: feeAccount,
-        lamports: agentFee * LAMPORTS_PER_SOL,
+        lamports: agentFee,
       })
     );
     return new VersionedTransaction(message.compileToV0Message());

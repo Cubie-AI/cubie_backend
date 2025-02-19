@@ -93,20 +93,19 @@ interface JupiterSwapResponse {
   error: string;
   swapTransaction: string;
 }
+
 export async function getSwapTransaction(params: JupiterSwapTransaction) {
   const swapResponse = await (
     await fetch("https://api.jup.ag/swap/v1/swap", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        // 'x-api-key': '' // enter api key here
       },
       body: JSON.stringify({
         quoteResponse: params.quote,
         userPublicKey: params.userPublicKey,
 
         // ADDITIONAL PARAMETERS TO OPTIMIZE FOR TRANSACTION LANDING
-        // See next guide to optimize for transaction landing
         dynamicComputeUnitLimit: true,
         dynamicSlippage: true,
         prioritizationFeeLamports: {

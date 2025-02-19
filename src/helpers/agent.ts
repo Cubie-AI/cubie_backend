@@ -95,7 +95,6 @@ export async function getAgentResponse(id: number, expanded = false) {
 }
 
 export async function syncAgentsTransactionHistoryTimer() {
-  logger.info("Syncing agent transaction history");
   await syncAgentTransactionHistory();
   setTimeout(syncAgentsTransactionHistoryTimer, 1000);
 }
@@ -108,6 +107,7 @@ async function syncAgentTransactionHistory() {
       agent.mint,
       lastSignature
     );
+    logger.info(`Found ${history.length} historical transactions for ${agent.mint}`);
     for (const item of history) {
       await PriceHistory.create({
         price: "" + item.price,
