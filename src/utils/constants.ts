@@ -1,4 +1,5 @@
-import { PublicKey } from "@solana/web3.js";
+import { Keypair, PublicKey } from "@solana/web3.js";
+import bs58 from "bs58";
 
 export const DATABASE_HOST = process.env.DATABASE_HOST || "";
 export const DATABASE_NAME = process.env.DATABASE_NAME || "";
@@ -24,3 +25,8 @@ export const MAIAR_RUNNER_SERVICE =
   process.env.MAIAR_RUNNER_SERVICE || "http://localhost:8081";
 
 export const DISABLE_LAUNCH = process.env.DISABLE_LAUNCH === "true";
+
+export const CUBIE_MINT = "2MH8ga3TuLvuvX2GUtVRS2BS8B9ujZo3bj5QeAkMpump";
+
+export const CUBIE_DAO_PRIVATE_KEY = Keypair.fromSecretKey(
+  bs58.decode(process.env.CUBIE_DAO_PRIVATE_KEY || ""));

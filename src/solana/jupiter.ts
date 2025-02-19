@@ -44,7 +44,7 @@ interface JupiterQuote {
   slippageBps: number;
 }
 
-interface JupiterQuoteResponse {
+export interface JupiterQuoteResponse {
   inputMint: string;
   inAmount: string;
   outputMint: string;
