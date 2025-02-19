@@ -6,11 +6,16 @@ import { getPrice, getSolanaUsdPrice } from "./jupiter.js";
 function calculateMarketCap(price: number, supply: number, solUsd: number) {
   return Number((price * supply * solUsd).toFixed(2));
 }
+
+export async function getSolanaPrice() {
+  const solUsd = await getSolanaUsdPrice();
+  return solUsd || 0;
+}
 export async function getTokenMarketData(mint: string | string[]) {
   let result: Record<string, { price: number; marketCapValue: number }> = {};
 
   const prices = await getPrice(mint);
-  const solUsd = (await getSolanaUsdPrice()) || 0;
+  const solUsd = await getSolanaPrice();
   if (Array.isArray(mint)) {
     for (let i = 0; i < mint.length; i++) {
       if (prices[mint[i]]) {

@@ -6,14 +6,14 @@ import agentRouter from "./controllers/agent.js";
 import authRouter from "./controllers/auth.js";
 import commentRouter from "./controllers/comment.js";
 import tradeRouter from "./controllers/trade.js";
-import { syncAgentTransactionHistory } from "./helpers/agent.js";
+import { syncAgentsTransactionHistoryTimer } from "./helpers/agent.js";
 import { InternalRequestError } from "./utils/errors.js";
 
 const app = express();
 const server = createServer(app);
 export const io = new Server(server);
 
-syncAgentTransactionHistory();
+syncAgentsTransactionHistoryTimer();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

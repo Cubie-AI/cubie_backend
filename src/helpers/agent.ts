@@ -1,18 +1,37 @@
+import { PublicKey } from "@solana/web3.js";
 import { Comment, PriceHistory } from "../db/models.js";
 import { getAgentById, getAgents } from "../db/repositories.js";
 import {
   getLastSignature,
   getPriceHistory,
 } from "../db/repositories/priceHistory.js";
+import { solanaConnection } from "../solana/connection.js";
 import { getBucketedData } from "../solana/dexscreener.js";
 import { getHistoricalTransactionData } from "../solana/market.js";
-import { getTokenMarketData } from "../solana/token.js";
+import { getSolanaPrice, getTokenMarketData } from "../solana/token.js";
 import { logger } from "../utils/logger.js";
 
 interface HistoricPrice {
   time: number;
   price: number;
 }
+
+async function convertTokenPriceHistoryToMarketCap(
+  mint: string,
+  history: HistoricPrice[]
+) {
+  const solPrice = await getSolanaPrice();
+  const supply =
+    (await solanaConnection.getTokenSupply(new PublicKey(mint))).value
+      ?.uiAmount || 1000000000;
+
+  const marketCapValue = history.map((price) => ({
+    time: price.time,
+    price: (1 / price.price) * supply * solPrice,
+  }));
+  return marketCapValue;
+}
+
 export async function getAgentResponse(id: number, expanded = false) {
   const agent = await getAgentById(id);
 
@@ -62,8 +81,11 @@ export async function getAgentResponse(id: number, expanded = false) {
       };
     });
 
-    response.history = flattendHistory.sort((a, b) => a.time - b.time);
-    response.history = flattendHistory;
+    flattendHistory.sort((a, b) => a.time - b.time);
+    response.history = await convertTokenPriceHistoryToMarketCap(
+      agent.mint,
+      flattendHistory
+    );
 
     response.comments = agent.comments.map((comment) => comment.toJSON());
     response.volume = (await getBucketedData([agent.mint]))[agent.mint];
@@ -72,7 +94,13 @@ export async function getAgentResponse(id: number, expanded = false) {
   return response;
 }
 
-export async function syncAgentTransactionHistory() {
+export async function syncAgentsTransactionHistoryTimer() {
+  logger.info("Syncing agent transaction history");
+  await syncAgentTransactionHistory();
+  setTimeout(syncAgentsTransactionHistoryTimer, 1000);
+}
+
+async function syncAgentTransactionHistory() {
   const agents = await getAgents();
   for (const agent of agents) {
     const lastSignature = await getLastSignature(agent.id);

@@ -108,7 +108,7 @@ router.post(
     }
 
     logger.info(
-      `Creating agent for owner ${owner} with name ${data.name} and ticker ${data.ticker}`
+      `Creating agent for owner ${owner} with name ${data.name} and ticker ${data.ticker} and ${data.twitterConfig?.email} and ${data.telegramConfig?.botToken}`
     );
     const {
       name,
@@ -154,6 +154,23 @@ router.post(
     // For now we assume it is a fixed sol amount to launch an agent
     pollFeeAccount(userFeeAccount.publicKey);
 
+    let xConfig = {};
+    if (twitterConfig) {
+      xConfig = {
+        tw_email: twitterConfig.email,
+        tw_password: twitterConfig.password,
+        tw_handle: twitterConfig.username,
+      };
+    }
+
+    let tgConfig = {};
+    if (telegramConfig) {
+      tgConfig = {
+        telegram_bot_token: telegramConfig.botToken,
+        telegram: telegramConfig.username,
+      };
+    }
+
     const agentData = {
       name,
       ticker,
@@ -165,6 +182,8 @@ router.post(
       feeAccountPrivateKey: Buffer.from(userFeeAccount.secretKey).toString(
         "base64"
       ),
+      ...xConfig,
+      ...tgConfig,
     } as Agent;
 
     const tokenMetadata = await createTokenMetadata(
@@ -183,6 +202,10 @@ router.post(
 
     logger.info("Saving agent");
     await agent.save();
+    for (const info of agentInfo) {
+      info.agentId = agent.id;
+      await info.save();
+    }
     logger.info("Agent saved");
 
     const transaction = await getCreateAndBuyTransaction(

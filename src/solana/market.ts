@@ -1,10 +1,16 @@
 import { NATIVE_MINT } from "@solana/spl-token";
 import {
+  ComputeBudgetInstruction,
+  ComputeBudgetProgram,
   ConfirmedSignatureInfo,
   LAMPORTS_PER_SOL,
   ParsedTransactionWithMeta,
+  PartiallyDecodedInstruction,
   PublicKey,
+  TransactionInstruction,
 } from "@solana/web3.js";
+import bs58 from "bs58";
+import { PUMPFUN_PROGRAM } from "../utils/constants.js";
 import { logger } from "../utils/logger.js";
 import { raydium, solanaConnection } from "./connection.js";
 
@@ -31,17 +37,36 @@ export async function getAllTransactionsUntilLastSignature(
       ...params,
       before: current[current.length - 1].signature,
     });
+
     allSignatures.push(...current);
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   }
   return allSignatures;
 }
 
-export async function getTokenPoolInfo(mint: string, lastSignature?: string) {
-  const poolInfo = await raydium.api.fetchPoolByMints({
+// Get pool address for a given mint. Returns raydium pool address if available, otherwise returns pumpfun bonding curve pool address
+export async function getPoolInfo(mint: string) {
+  let poolInfo = await raydium.api.fetchPoolByMints({
     mint1: mint,
     mint2: NATIVE_MINT,
   });
-  const poolPublicKey = new PublicKey(poolInfo.data[0].id);
+
+  let poolAddress: PublicKey;
+  if (!poolInfo || poolInfo.data.length === 0) {
+    poolAddress = PublicKey.findProgramAddressSync(
+      [Buffer.from("bonding-curve"), new PublicKey(mint).toBuffer()],
+      new PublicKey(PUMPFUN_PROGRAM)
+    )[0];
+    logger.info(`No pool found for ${mint}, using bonding curve`);
+  } else {
+    poolAddress = new PublicKey(poolInfo.data[0].id);
+  }
+
+  return poolAddress;
+}
+
+export async function getTokenPoolInfo(mint: string, lastSignature?: string) {
+  const poolPublicKey = await getPoolInfo(mint);
 
   logger.info(`Found pool id for ${mint}: ${poolPublicKey.toBase58()}`);
   const transactions = await getAllTransactionsUntilLastSignature(
@@ -139,7 +164,9 @@ function computeTokenPrice(
   const postTokenBalances = parsedTranstion?.meta?.postTokenBalances;
   const preBalances = parsedTranstion?.meta?.preBalances;
   const postBalances = parsedTranstion?.meta?.postBalances;
+  const fee = parsedTranstion?.meta?.fee || 0;
 
+  logger.info(`Fee  ${fee}`);
   if (
     !preTokenBalances ||
     !postTokenBalances ||
@@ -179,8 +206,41 @@ function computeTokenPrice(
     if (preTokenBalance === postTokenBalance || !parsedTranstion.blockTime) {
       return;
     }
+
+    // PROPERLY : Parse the Instructions to find where the buy is happening on various programs
+    // and compute the cost ....
+    const instructions =
+      parsedTranstion.transaction.message.instructions.filter((ins) =>
+        ins.programId.equals(ComputeBudgetProgram.programId)
+      ) as PartiallyDecodedInstruction[];
+
+    let priorityFee = 0;
+    if (instructions.length > 0) {
+      let microLamports: BigInt | number = 0n;
+      instructions.forEach((ins) => {
+        const transactionInstruction = new TransactionInstruction({
+          programId: ins.programId,
+          keys: [],
+          data: Buffer.from(bs58.decode(ins.data)),
+        });
+        const type = ComputeBudgetInstruction.decodeInstructionType(
+          transactionInstruction
+        );
+
+        if (type === "SetComputeUnitPrice") {
+          microLamports = ComputeBudgetInstruction.decodeSetComputeUnitPrice(
+            transactionInstruction
+          ).microLamports;
+        }
+      });
+
+      console.dir(microLamports);
+      const computeUsage = parsedTranstion.meta?.computeUnitsConsumed || 0;
+      priorityFee = Math.floor((computeUsage * Number(microLamports)) / 1e6);
+    }
     const preSolBalance = preBalances[signer.index] / LAMPORTS_PER_SOL;
-    const postSolBalance = postBalances[signer.index] / LAMPORTS_PER_SOL;
+    const postSolBalance =
+      (postBalances[signer.index] + fee + priorityFee) / LAMPORTS_PER_SOL;
 
     let type = "buy";
     if (postTokenBalance < preTokenBalance) {
