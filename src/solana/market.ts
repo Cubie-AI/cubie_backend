@@ -69,11 +69,12 @@ export async function getTokenPoolInfo(mint: string, lastSignature?: string) {
   const poolPublicKey = await getPoolInfo(mint);
 
   logger.info(`Found pool id for ${mint}: ${poolPublicKey.toBase58()}`);
-  const transactions = await getAllTransactionsUntilLastSignature(
+  const transactions =( await getAllTransactionsUntilLastSignature(
     poolPublicKey,
     lastSignature
-  );
+  )).slice(0, 5000);
 
+  
   const successfullTransactions = transactions.filter(
     (transaction) => transaction.err === null
   );
@@ -81,7 +82,7 @@ export async function getTokenPoolInfo(mint: string, lastSignature?: string) {
     `Found ${successfullTransactions.length} transactions for ${mint}`
   );
 
-  const BATCH_SIZE = 1000;
+  const BATCH_SIZE = 100;
   const batches = [];
   for (let i = 0; i < successfullTransactions.length; i += BATCH_SIZE) {
     batches.push(successfullTransactions.slice(i, i + BATCH_SIZE));
