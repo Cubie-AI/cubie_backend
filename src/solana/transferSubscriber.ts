@@ -74,6 +74,7 @@ export async function makeV0Transaction(
 }
 
 export async function startFeeTransfer(agentId: number) {
+  logger.info(`Starting fee transfer for agent: ${agentId}`);
   const agent = await Agent.findOne({
     where: {
       id: agentId,

@@ -11,6 +11,7 @@ import {
 import { CUBIE_AGENT_FEE, PUMPFUN_PROGRAM } from "../utils/constants.js";
 import { logger } from "../utils/logger.js";
 import { solanaConnection } from "./connection.js";
+import { getAgentFee } from "../helpers/agentFee.js";
 
 interface TokenMetadata {
   name: string;
@@ -69,7 +70,8 @@ export async function getCreateAndBuyTransaction(
   tokenMetadata: TokenMetadata,
   mint: Keypair,
   solAmount: number,
-  feeAccount: PublicKey
+  feeAccount: PublicKey,
+  agentFee: number = CUBIE_AGENT_FEE
 ) {
   // Get the create transaction
   console.log(mint.publicKey.toBase58());
@@ -113,12 +115,13 @@ export async function getCreateAndBuyTransaction(
       addressLookupTableAccounts: addressLookupTable,
     });
 
+
     const ownerPublicKey = new PublicKey(owner);
     message.instructions.push(
       SystemProgram.transfer({
         fromPubkey: ownerPublicKey,
         toPubkey: feeAccount,
-        lamports: CUBIE_AGENT_FEE * LAMPORTS_PER_SOL,
+        lamports: agentFee * LAMPORTS_PER_SOL,
       })
     );
     return new VersionedTransaction(message.compileToV0Message());

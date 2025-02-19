@@ -16,7 +16,7 @@ class FeeAccountSubscription {
   }
 }
 
-export async function pollFeeAccount(feeAccount: PublicKey) {
+export async function pollFeeAccount(feeAccount: PublicKey, agentFee: number) {
   logger.info(`Polling fee account ${feeAccount.toBase58()}`);
   const recievedDeposit = async () => {
     // like a small potential fork risk here
@@ -28,7 +28,7 @@ export async function pollFeeAccount(feeAccount: PublicKey) {
 
   // Check if the fee account has enough balance to cover the agent fee
   let balance = (await recievedDeposit()) || 0;
-  if (balance >= (CUBIE_AGENT_FEE - 0.03) * LAMPORTS_PER_SOL) {
+  if (balance >= (agentFee - 0.01) * LAMPORTS_PER_SOL) {
     logger.info(`Fee account ${feeAccount.toBase58()} has enough balance`);
 
     // Get the agent if it is still pending
@@ -47,6 +47,6 @@ export async function pollFeeAccount(feeAccount: PublicKey) {
     startFeeTransfer(agentId);
     startAgentRunner(agentId);
   } else {
-    setTimeout(pollFeeAccount, 1000, feeAccount);
+    setTimeout(pollFeeAccount, 1000, feeAccount, agentFee);
   }
 }

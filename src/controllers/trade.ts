@@ -9,7 +9,7 @@ const router = Router();
 router.use(checkAuth);
 
 router.get("/quote", async (req, res, next) => {
-  const { inputMint, outputMint, amount, slippageBps = 50 } = req.query;
+  const { inputMint, outputMint, amount, slippageBps = 500 } = req.query;
 
   console.log(inputMint, outputMint, amount, slippageBps);
   if (!outputMint || !inputMint || !amount) {

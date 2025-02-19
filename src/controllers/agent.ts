@@ -17,6 +17,7 @@ import { pollFeeAccount } from "../solana/transactionListener.js";
 import { DISABLE_LAUNCH } from "../utils/constants.js";
 import { logger } from "../utils/logger.js";
 import { launchSchema } from "../validators/launch.js";
+import { getAgentFee } from "../helpers/agentFee.js";
 const storage = multer.memoryStorage();
 
 const upload = multer({
@@ -151,8 +152,9 @@ router.post(
     const mint = Keypair.generate();
     const userFeeAccount = Keypair.generate();
 
+    const agentFee = await getAgentFee();
     // For now we assume it is a fixed sol amount to launch an agent
-    pollFeeAccount(userFeeAccount.publicKey);
+    pollFeeAccount(userFeeAccount.publicKey, agentFee);
 
     let xConfig = {};
     if (twitterConfig) {
@@ -197,7 +199,6 @@ router.post(
     );
 
     agentData.image_url = tokenMetadata.imageUri;
-    logger.info("Creating agent with data: ", agentData);
     const agent = Agent.build({ ...agentData });
 
     logger.info("Saving agent");
@@ -213,7 +214,8 @@ router.post(
       tokenMetadata,
       mint,
       devBuy,
-      userFeeAccount.publicKey
+      userFeeAccount.publicKey,
+      agentFee
     );
 
     if (!transaction) {
