@@ -4,6 +4,27 @@ import { logger } from "../utils/logger.js";
 export interface JupiterPrice {
   data: Record<string, { price: number }>;
 }
+
+export interface BasicTokenInfo {
+  address: string;
+  decimals: number;
+  logoURI: string;
+  name: string;
+  symbol: string;
+  tags: string[];
+  freeze_authority?: string;
+  mint_authority?: string;
+  minted_at: Date;
+  daily_volume?: number;
+}
+
+export async function getJupiterTokenList() {
+  logger.info("Getting token list from Jupiter");
+  const tokensRequest = await fetch(`https://api.jup.ag/tokens/v1/all`);
+  const tokens = await tokensRequest.json();
+  return tokens as BasicTokenInfo[];
+}
+
 export async function getPrice(mint: string | string[]) {
   let price: JupiterPrice["data"] = {};
   try {

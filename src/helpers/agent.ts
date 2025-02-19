@@ -107,7 +107,6 @@ async function syncAgentTransactionHistory() {
       agent.mint,
       lastSignature
     );
-    logger.info(`Found ${history.length} historical transactions for ${agent.mint}`);
     for (const item of history) {
       await PriceHistory.create({
         price: "" + item.price,
@@ -116,9 +115,5 @@ async function syncAgentTransactionHistory() {
         signature: item.signature,
       });
     }
-
-    logger.info(
-      `Found ${history.length} historical transactions for ${agent.mint}`
-    );
   }
 }

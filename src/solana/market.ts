@@ -18,7 +18,7 @@ export async function getHistoricalTransactionData(
   mint: string,
   lastSignature: string
 ) {
-   return await getTokenPoolInfo(mint, lastSignature);
+  return await getTokenPoolInfo(mint, lastSignature);
 }
 
 export async function getAllTransactionsUntilLastSignature(
@@ -57,7 +57,6 @@ export async function getPoolInfo(mint: string) {
       [Buffer.from("bonding-curve"), new PublicKey(mint).toBuffer()],
       new PublicKey(PUMPFUN_PROGRAM)
     )[0];
-    logger.info(`No pool found for ${mint}, using bonding curve`);
   } else {
     poolAddress = new PublicKey(poolInfo.data[0].id);
   }
@@ -68,18 +67,12 @@ export async function getPoolInfo(mint: string) {
 export async function getTokenPoolInfo(mint: string, lastSignature?: string) {
   const poolPublicKey = await getPoolInfo(mint);
 
-  logger.info(`Found pool id for ${mint}: ${poolPublicKey.toBase58()}`);
-  const transactions =( await getAllTransactionsUntilLastSignature(
-    poolPublicKey,
-    lastSignature
-  )).slice(0, 5000);
+  const transactions = (
+    await getAllTransactionsUntilLastSignature(poolPublicKey, lastSignature)
+  ).slice(0, 5000);
 
-  
   const successfullTransactions = transactions.filter(
     (transaction) => transaction.err === null
-  );
-  logger.info(
-    `Found ${successfullTransactions.length} transactions for ${mint}`
   );
 
   const BATCH_SIZE = 100;

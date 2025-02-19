@@ -8,12 +8,15 @@ import commentRouter from "./controllers/comment.js";
 import tradeRouter from "./controllers/trade.js";
 import { syncAgentsTransactionHistoryTimer } from "./helpers/agent.js";
 import { InternalRequestError } from "./utils/errors.js";
+import { syncTokensTimer } from "./db/repositories/token.js";
 
 const app = express();
 const server = createServer(app);
 export const io = new Server(server);
 
 syncAgentsTransactionHistoryTimer();
+syncTokensTimer();
+
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

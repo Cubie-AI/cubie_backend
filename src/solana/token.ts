@@ -37,9 +37,9 @@ export async function getTokenMarketData(mint: string | string[]) {
   } else {
     const supply = await solanaConnection.getTokenSupply(new PublicKey(mint));
     result[mint] = {
-      price: prices[mint].price,
+      price: prices[mint]?.price || 0,
       marketCapValue: calculateMarketCap(
-        prices[mint].price,
+        prices[mint]?.price || 0,
         supply?.value?.uiAmount || 0,
         solUsd
       ),

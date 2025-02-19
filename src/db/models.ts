@@ -4,6 +4,7 @@ import { Comment } from "./models/comment.js";
 import { Nonce } from "./models/nonce.js";
 import { People } from "./models/people.js";
 import { PriceHistory } from "./models/priceHistory.js";
+import { Token } from "./models/token.js";
 
 People.belongsTo(Agent, {
   foreignKey: "agentId",
@@ -36,12 +37,14 @@ Comment.belongsTo(Agent, {
   foreignKey: "agentId",
 });
 
+// Sync all models
 await Agent.sync({});
-
 await People.sync({});
 await AgentInfo.sync({});
 await Nonce.sync({});
 await Comment.sync({});
 await PriceHistory.sync({});
+await Token.sync({});
 
-export { Agent, AgentInfo, Comment, Nonce, People, PriceHistory };
+// scoped export
+export { Agent, AgentInfo, Comment, Nonce, People, PriceHistory, Token };
