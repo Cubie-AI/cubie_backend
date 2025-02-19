@@ -91,7 +91,7 @@ router.post(
     if (DISABLE_LAUNCH) {
       return next(
         new InternalValidationError(
-          "Launchpad is going live Feb 17 @ 3:30PM PST/6:30PM EST"
+          "Launchpad is going live Feb 19 @ 12PM PST/3PM EST"
         )
       );
     }
