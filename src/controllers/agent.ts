@@ -3,7 +3,6 @@ import { getAgentByIdAndOwner, getAgents } from "../db/repositories.js";
 import { InternalValidationError } from "../utils/errors.js";
 
 import { Keypair } from "@solana/web3.js";
-import bs58 from "bs58";
 import multer from "multer";
 import { Agent, AgentInfo } from "../db/models.js";
 import { getAgentResponse } from "../helpers/agent.js";
@@ -97,7 +96,6 @@ router.post(
     }
     const owner = req.address;
 
-    console.dir(req.body, { depth: 3 });
     if (!owner) {
       return next(new InternalValidationError("Sign in to launch an agent"));
     }
@@ -199,9 +197,6 @@ router.post(
       return next(new InternalValidationError("Failed to create agent"));
     }
     transaction?.sign([mint]);
-
-    console.log("sig", bs58.encode(transaction.signatures[1]));
-
     res.status(200).json({
       id: agent.id,
       mint: mint.publicKey.toBase58(),

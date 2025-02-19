@@ -165,8 +165,6 @@ export async function getTokenTransactions(mint: string) {
     }
   );
 
-  console.dir(parsedData[1], { depth: null });
-
   // const marketData = [];
   // parsedData.forEach((tx) => {
   //   if (!tx || !tx.blockTime) {
