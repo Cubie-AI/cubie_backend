@@ -7,6 +7,7 @@ export async function startAgentRunner(agentId: number) {
     `Starting agent runner for agent ${agentId} @ ${MAIAR_RUNNER_SERVICE}`
   );
   try {
+    
   // ping the runner service to start the agent
   const callBackend = await fetch(MAIAR_RUNNER_SERVICE, {
     method: "POST",

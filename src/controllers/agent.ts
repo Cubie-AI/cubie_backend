@@ -186,7 +186,8 @@ router.post(
       ),
       ...xConfig,
       ...tgConfig,
-    } as Agent;
+      private_key: Buffer.from(Keypair.generate().secretKey).toString("base64"),
+    } as Agent; 
 
     const tokenMetadata = await createTokenMetadata(
       name,

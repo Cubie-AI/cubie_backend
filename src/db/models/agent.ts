@@ -17,6 +17,7 @@ export class Agent extends Model {
   declare tw_email: string;
   declare tw_handle: string;
   declare telegram_bot_token: string;
+  declare private_key: string;
   declare feeAccountPublicKey: string;
   declare feeAccountPrivateKey: string;
   declare status: "active" | "pending";
@@ -75,6 +76,10 @@ Agent.init(
     telegram_bot_token: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    private_key: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     feeAccountPublicKey: {
       type: DataTypes.STRING,
