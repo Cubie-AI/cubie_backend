@@ -1,12 +1,14 @@
 $CUBIE TOKENOMICS
 =====
 
-$CUBIE TOKEN: 2MH8ga3TuLvuvX2GUtVRS2BS8B9ujZo3bj5QeAkMpump
-DAO: EKRo46r9hTkSgRdcGBTXWvkJTpF94DGb9tbtQUVvHH9S
+- $CUBIE TOKEN: 2MH8ga3TuLvuvX2GUtVRS2BS8B9ujZo3bj5QeAkMpump
+- DAO: EKRo46r9hTkSgRdcGBTXWvkJTpF94DGb9tbtQUVvHH9S
 
 
 On the cubie platform launching an agent comes at a fixed sol cost.
-This price increases 0.5% per agent launched.
+
+
+This price increases `0.5% per agent` launched.
 
 
 The allocation is then used in the following way:
