@@ -9,7 +9,7 @@ import { solanaConnection } from "../solana/connection.js";
 import { getBucketedData } from "../solana/dexscreener.js";
 import { getHistoricalTransactionData } from "../solana/market.js";
 import { getSolanaPrice, getTokenMarketData } from "../solana/token.js";
-import { logger } from "../utils/logger.js";
+import { makeCharacter } from "./character.js";
 
 interface HistoricPrice {
   time: number;
@@ -49,6 +49,7 @@ export async function getAgentResponse(id: number, expanded = false) {
     owner: agent.owner,
     photo: agent.image_url,
     bio: agent.bio,
+    character: "",
     twitter: agent.tw_handle,
     telegram: agent.telegram,
     volume: {},
@@ -58,6 +59,7 @@ export async function getAgentResponse(id: number, expanded = false) {
   };
 
   if (expanded) {
+    response.character = await makeCharacter(agent);
     const history: Record<number, PriceHistory[]> = {};
     const agentHistory = await getPriceHistory(agent.id, 1000);
     agentHistory.forEach((agentHistory) => {

@@ -27,6 +27,7 @@ export const launchSchema = z.object({
       required_error: "Bio is required",
     })
     .max(256, { message: "Bio must be less than 256 characters" }),
+  api: z.string({}).optional().default(""),
   twitterConfig: z
     .string()
     .optional()

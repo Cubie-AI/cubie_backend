@@ -6,8 +6,9 @@ import { Keypair } from "@solana/web3.js";
 import multer from "multer";
 import { Agent, AgentInfo } from "../db/models.js";
 import { getAgentResponse } from "../helpers/agent.js";
+import { getAgentFee } from "../helpers/agentFee.js";
 import { checkAuth } from "../middleware/auth.js";
-import { getBucketedData, TimedMarkedData } from "../solana/dexscreener.js";
+import { getBucketedData } from "../solana/dexscreener.js";
 import {
   createTokenMetadata,
   getCreateAndBuyTransaction,
@@ -17,7 +18,6 @@ import { pollFeeAccount } from "../solana/transactionListener.js";
 import { DISABLE_LAUNCH } from "../utils/constants.js";
 import { logger } from "../utils/logger.js";
 import { launchSchema } from "../validators/launch.js";
-import { getAgentFee } from "../helpers/agentFee.js";
 const storage = multer.memoryStorage();
 
 const upload = multer({
@@ -26,18 +26,6 @@ const upload = multer({
 
 const router = Router();
 
-interface AgentData {
-  id: number;
-  name: string;
-  ticker: string;
-  mint: string;
-  owner: string;
-  photo: string;
-  bio: string;
-  twitter: string;
-  telegram: string;
-  volume?: TimedMarkedData;
-}
 router.get("/", async (req, res, next) => {
   const { order = "", filter = "" } = req.query || {};
 
@@ -115,6 +103,7 @@ router.post(
       name,
       ticker,
       bio,
+      api,
       twitterConfig,
       telegramConfig,
       knowledge,
@@ -177,6 +166,7 @@ router.post(
       name,
       ticker,
       bio: agentBio,
+      api,
       owner,
       mint: mint.publicKey.toBase58(),
       status: "pending",
@@ -187,7 +177,7 @@ router.post(
       ...xConfig,
       ...tgConfig,
       private_key: Buffer.from(Keypair.generate().secretKey).toString("base64"),
-    } as Agent; 
+    } as Agent;
 
     const tokenMetadata = await createTokenMetadata(
       name,

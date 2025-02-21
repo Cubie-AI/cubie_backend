@@ -2,10 +2,15 @@ import { DataTypes, Model } from "sequelize";
 import { db } from "../connection.js";
 import { Agent } from "./agent.js";
 
+export type AgentInfoType =
+  | "knowledge"
+  | "style"
+  | "twitter_style"
+  | "telegram_style";
 export class AgentInfo extends Model {
   declare id: number;
   declare agentId: number;
-  declare type: "knowledge" | "style" | "twitter_style" | "telegram_style";
+  declare type: AgentInfoType;
   declare data: string;
 }
 

@@ -133,6 +133,7 @@ async function processTransactionBatch(
       if (priceForAccounts) priceHistory.push(...priceForAccounts);
     });
   }
+  NATIVE_MINT;
 
   return priceHistory;
 }
