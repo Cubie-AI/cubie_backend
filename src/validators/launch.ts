@@ -28,6 +28,7 @@ export const launchSchema = z.object({
     })
     .max(256, { message: "Bio must be less than 256 characters" }),
   api: z.string({}).optional().default(""),
+  platform: z.enum(["pump", "gfm"]).optional().default("pump"),
   twitterConfig: z
     .string()
     .optional()
@@ -80,4 +81,58 @@ export const launchSchema = z.object({
       required_error: "Dev buy amount is required",
     })
     .transform((value) => parseFloat(value)),
+});
+
+export const launchUpdateSchema = z.object({
+  name: z
+    .string()
+    .max(32, { message: "Name must be less than 32 characters" })
+    .optional(),
+  bio: z
+    .string()
+    .max(256, { message: "Bio must be less than 256 characters" })
+    .optional(),
+  api: z.string({}).optional().default(""),
+  twitterConfig: z
+    .string()
+    .optional()
+    .transform((value, ctx) => {
+      if (!value) {
+        return undefined;
+      }
+
+      const parsed = twitterConfig.safeParse(JSON.parse(value));
+      if (!parsed.success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Invalid Twitter configuration",
+        });
+        return undefined;
+      }
+
+      return parsed.data;
+    }),
+  telegramConfig: z
+    .string()
+    .optional()
+    .transform((value, ctx) => {
+      if (!value) {
+        return undefined;
+      }
+      const parsed = telegramConfig.safeParse(JSON.parse(value));
+
+      if (!parsed.success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Invalid Telegram configuration",
+        });
+        return undefined;
+      }
+
+      return parsed.data;
+    }),
+  knowledge: z.array(z.string()).optional().default([]),
+  style: z.array(z.string()).optional().default([]),
+  twitterStyle: z.array(z.string()).optional().default([]),
+  telegramStyle: z.array(z.string()).optional().default([]),
 });

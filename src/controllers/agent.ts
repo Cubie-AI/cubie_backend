@@ -7,8 +7,10 @@ import multer from "multer";
 import { Agent, AgentInfo } from "../db/models.js";
 import { getAgentResponse } from "../helpers/agent.js";
 import { getAgentFee } from "../helpers/agentFee.js";
+import { makeAgentInfo } from "../helpers/agentInfo.js";
 import { checkAuth } from "../middleware/auth.js";
 import { getBucketedData } from "../solana/dexscreener.js";
+import { launchGFM } from "../solana/gfm.js";
 import {
   createTokenMetadata,
   getCreateAndBuyTransaction,
@@ -17,7 +19,7 @@ import { getTokenMarketData } from "../solana/token.js";
 import { pollFeeAccount } from "../solana/transactionListener.js";
 import { DISABLE_LAUNCH } from "../utils/constants.js";
 import { logger } from "../utils/logger.js";
-import { launchSchema } from "../validators/launch.js";
+import { launchSchema, launchUpdateSchema } from "../validators/launch.js";
 const storage = multer.memoryStorage();
 
 const upload = multer({
@@ -104,6 +106,7 @@ router.post(
       ticker,
       bio,
       api,
+      platform,
       twitterConfig,
       telegramConfig,
       knowledge,
@@ -123,20 +126,6 @@ router.post(
         new InternalValidationError("Enable at least one social media platform")
       );
     }
-    const agentInfo: AgentInfo[] = [];
-
-    knowledge.forEach((data: string) => {
-      agentInfo.push(AgentInfo.build({ type: "knowledge", data }));
-    });
-    style.forEach((data: string) => {
-      agentInfo.push(AgentInfo.build({ type: "style", data }));
-    });
-    twitterStyle.forEach((data: string) => {
-      agentInfo.push(AgentInfo.build({ type: "twitter_style", data }));
-    });
-    telegramStyle.forEach((data: string) => {
-      agentInfo.push(AgentInfo.build({ type: "telegram_style", data }));
-    });
 
     const mint = Keypair.generate();
     const userFeeAccount = Keypair.generate();
@@ -194,25 +183,52 @@ router.post(
 
     logger.info("Saving agent");
     await agent.save();
-    for (const info of agentInfo) {
-      info.agentId = agent.id;
-      await info.save();
-    }
+    await AgentInfo.bulkCreate(
+      makeAgentInfo(agent.id, {
+        knowledge,
+        style,
+        twitterStyle,
+        telegramStyle,
+      })
+    );
     logger.info("Agent saved");
 
-    const transaction = await getCreateAndBuyTransaction(
-      owner,
-      tokenMetadata,
-      mint,
-      devBuy,
-      userFeeAccount.publicKey,
-      agentFee
-    );
+    let transaction;
 
-    if (!transaction) {
-      return next(new InternalValidationError("Failed to create agent"));
+    if (platform === "pump") {
+      transaction = await getCreateAndBuyTransaction(
+        owner,
+        tokenMetadata,
+        mint,
+        devBuy,
+        userFeeAccount.publicKey,
+        agentFee
+      );
+
+      if (!transaction) {
+        return next(new InternalValidationError("Failed to create agent"));
+      }
+      transaction?.sign([mint]);
+    } else {
+      transaction = await launchGFM(
+        {
+          name,
+          symbol: ticker,
+          image: req.file.buffer,
+          walletAddress: owner,
+          amountIn: devBuy,
+          description: bio,
+          twitter: twitterConfig?.username,
+          telegram: telegramConfig?.username,
+          priorFee: 0.01,
+        },
+        userFeeAccount.publicKey,
+        agentFee
+      );
+      if (!transaction) {
+        return next(new InternalValidationError("Failed to create agent"));
+      }
     }
-    transaction?.sign([mint]);
     res.status(200).json({
       id: agent.id,
       mint: mint.publicKey.toBase58(),
@@ -223,16 +239,62 @@ router.post(
 
 router.put("/:id", checkAuth, async (req, res, next) => {
   const id = parseInt(req.params.id, 10);
-  const data = req.body;
   const agent = await getAgentByIdAndOwner(id, req.address);
 
   if (!agent) {
     return next(new InternalValidationError("Agent not found"));
   }
+  const { success, data, error } = await launchUpdateSchema.safeParseAsync(
+    req.body
+  );
 
-  await Agent.update(data, {
-    where: { id },
-  });
+  if (!success) {
+    const messages = error?.errors.map((error) => error.message).join(", ");
+    return next(new InternalValidationError(messages));
+  }
+
+  const {
+    name,
+    bio,
+    api,
+    twitterConfig,
+    telegramConfig,
+    knowledge,
+    style,
+    twitterStyle,
+    telegramStyle,
+  } = data;
+
+  await AgentInfo.destroy({ where: { agentId: agent.id } });
+  await AgentInfo.bulkCreate(
+    makeAgentInfo(agent.id, {
+      knowledge,
+      style,
+      twitterStyle,
+      telegramStyle,
+    })
+  );
+
+  const agentData = {
+    ...(name && { name }),
+    ...(bio && { bio }),
+    ...(api && { api }),
+    ...(twitterConfig && {
+      tw_handle: twitterConfig.username,
+      tw_email: twitterConfig.email,
+      tw_password: twitterConfig.password,
+    }),
+    ...(telegramConfig && {
+      telegram: telegramConfig.username,
+      telegram_bot_token: telegramConfig.botToken,
+    }),
+  };
+
+  if (Object.keys(agentData).length) {
+    await Agent.update(agentData, {
+      where: { id },
+    });
+  }
 
   res.status(200).json({ status: agent.status });
 });

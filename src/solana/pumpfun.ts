@@ -1,17 +1,9 @@
 import { getAssociatedTokenAddress } from "@solana/spl-token";
-import {
-  AddressLookupTableAccount,
-  Keypair,
-  LAMPORTS_PER_SOL,
-  PublicKey,
-  SystemProgram,
-  TransactionMessage,
-  VersionedTransaction,
-} from "@solana/web3.js";
+import { Keypair, PublicKey } from "@solana/web3.js";
+import { makeAgentLaunchTransaction } from "../helpers/transaction.js";
 import { CUBIE_AGENT_FEE, PUMPFUN_PROGRAM } from "../utils/constants.js";
 import { logger } from "../utils/logger.js";
 import { solanaConnection } from "./connection.js";
-import { getAgentFee } from "../helpers/agentFee.js";
 
 interface TokenMetadata {
   name: string;
@@ -65,6 +57,7 @@ export async function createTokenMetadata(
     uri: metadataResponseJSON.metadataUri,
   };
 }
+
 export async function getCreateAndBuyTransaction(
   owner: string,
   tokenMetadata: TokenMetadata,
@@ -74,7 +67,6 @@ export async function getCreateAndBuyTransaction(
   agentFee: number = CUBIE_AGENT_FEE
 ) {
   // Get the create transaction
-  console.log(mint.publicKey.toBase58());
   const response = await fetch(`https://pumpportal.fun/api/trade-local`, {
     method: "POST",
     headers: {
@@ -92,39 +84,18 @@ export async function getCreateAndBuyTransaction(
       pool: "pump",
     }),
   });
+
   if (response.status === 200) {
     // successfully generated transaction
     const data = await response.arrayBuffer();
     console.log("Transaction data: ", data);
-    const versionedTransaction = VersionedTransaction.deserialize(
-      new Uint8Array(data)
-    );
-    const addressLookupTable = await Promise.all(
-      versionedTransaction.message.addressTableLookups.map(async (lookup) => {
-        return new AddressLookupTableAccount({
-          key: lookup.accountKey,
-          state: AddressLookupTableAccount.deserialize(
-            await solanaConnection
-              .getAccountInfo(lookup.accountKey)
-              .then((res) => res?.data || new Uint8Array())
-          ),
-        });
-      })
-    );
-    const message = TransactionMessage.decompile(versionedTransaction.message, {
-      addressLookupTableAccounts: addressLookupTable,
-    });
 
-
-    const ownerPublicKey = new PublicKey(owner);
-    message.instructions.push(
-      SystemProgram.transfer({
-        fromPubkey: ownerPublicKey,
-        toPubkey: feeAccount,
-        lamports: agentFee,
-      })
+    return await makeAgentLaunchTransaction(
+      Buffer.from(data),
+      owner,
+      feeAccount,
+      agentFee
     );
-    return new VersionedTransaction(message.compileToV0Message());
   } else {
     console.log(response.statusText); // log error
   }

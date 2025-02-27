@@ -29,5 +29,13 @@ export const DISABLE_LAUNCH = process.env.DISABLE_LAUNCH === "true";
 export const CUBIE_MINT = "2MH8ga3TuLvuvX2GUtVRS2BS8B9ujZo3bj5QeAkMpump";
 
 // While in dev just use a dummy keypair
-export const CUBIE_DAO_PRIVATE_KEY = process.env.NODE_ENV === "production" ? Keypair.fromSecretKey(
-  bs58.decode(process.env.CUBIE_DAO_PRIVATE_KEY || "")) : Keypair.generate();
+export const CUBIE_DAO_PRIVATE_KEY =
+  process.env.NODE_ENV === "production"
+    ? Keypair.fromSecretKey(
+        bs58.decode(process.env.CUBIE_DAO_PRIVATE_KEY || "")
+      )
+    : Keypair.generate();
+
+export const GFM_ENDPOINT =
+  process.env.GFM_ENDPOINT ||
+  "https://www.gofundmeme.io/gofundmeme/v1/api/interface/pool/bonding-curve/create/request";
