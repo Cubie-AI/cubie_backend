@@ -1,5 +1,13 @@
-import { Keypair, PublicKey } from "@solana/web3.js";
+import {
+  AddressLookupTableAccount,
+  Keypair,
+  PublicKey,
+  SystemProgram,
+  TransactionMessage,
+  VersionedTransaction,
+} from "@solana/web3.js";
 import { readFileSync } from "fs";
+import { solanaConnection } from "../src/solana/connection.js";
 
 const gfmProgram = new PublicKey(
   "GFMioXjhuDWMEBtuaoaDPJFPEnL2yDHCWKoVPhj1MeA7"
@@ -121,6 +129,43 @@ type GFMResponse =
       success: false;
       data: GFMErrorResponse;
     };
+
+async function makeCubieTransaction(
+  data: Buffer,
+  owner: string,
+  feeAccount: PublicKey,
+  agentFee: number
+) {
+  const versionedTransaction = VersionedTransaction.deserialize(
+    new Uint8Array(data)
+  );
+  const addressLookupTable = await Promise.all(
+    versionedTransaction.message.addressTableLookups.map(async (lookup) => {
+      return new AddressLookupTableAccount({
+        key: lookup.accountKey,
+        state: AddressLookupTableAccount.deserialize(
+          await solanaConnection
+            .getAccountInfo(lookup.accountKey)
+            .then((res) => res?.data || new Uint8Array())
+        ),
+      });
+    })
+  );
+  const message = TransactionMessage.decompile(versionedTransaction.message, {
+    addressLookupTableAccounts: addressLookupTable,
+  });
+
+  const ownerPublicKey = new PublicKey(owner);
+  message.instructions.push(
+    SystemProgram.transfer({
+      fromPubkey: ownerPublicKey,
+      toPubkey: feeAccount,
+      lamports: agentFee,
+    })
+  );
+  return new VersionedTransaction(message.compileToV0Message());
+}
+
 async function launch() {
   const image = readFileSync(import.meta.dirname + "/test.png");
 
@@ -153,8 +198,17 @@ async function launch() {
   }
 
   console.log("Success", response.data);
+
+  const transaction = await makeCubieTransaction(
+    Buffer.from(response.data.rawTransaction),
+    params.walletAddress,
+    Keypair.generate().publicKey,
+    100
+  );
+
+  console.dir(transaction, { depth: null });
   // return the response.data.rawTransaction to the user and sign it with the wallet
-  return response.data;
+  return transaction;
 }
 
 launch();
