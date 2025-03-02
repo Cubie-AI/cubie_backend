@@ -90,12 +90,7 @@ export async function getCreateAndBuyTransaction(
     const data = await response.arrayBuffer();
     console.log("Transaction data: ", data);
 
-    return await makeAgentLaunchTransaction(
-      Buffer.from(data),
-      owner,
-      feeAccount,
-      agentFee
-    );
+    return await makeAgentLaunchTransaction(data, owner, feeAccount, agentFee);
   } else {
     console.log(response.statusText); // log error
   }
