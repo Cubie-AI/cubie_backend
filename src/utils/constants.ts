@@ -7,10 +7,8 @@ export const DATABASE_PASSWORD = process.env.DATABASE_PASSWORD || "";
 export const DATABASE_PORT = process.env.DATABASE_PORT || "";
 export const DATABASE_USER = process.env.DATABASE_USER || "";
 
-export const SOLANA_RPC_URL =
-  "https://palpable-flashy-water.solana-mainnet.quiknode.pro/a24d45a88242df8cc4f32c8070df47b66e287c25";
-export const SOLANA_WSS_URL =
-  "wss://palpable-flashy-water.solana-mainnet.quiknode.pro/a24d45a88242df8cc4f32c8070df47b66e287c25";
+export const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || "";
+export const SOLANA_WSS_URL = process.env.SOLANA_WSS_URL || "";
 export const CUBIE_AGENT_FEE = 0.05;
 
 export const JWT_SECRET = process.env.JWT_SECRET || "";
